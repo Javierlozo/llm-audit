@@ -53,6 +53,10 @@ brew install semgrep   # or: pipx install semgrep
 ## Use
 
 ```bash
+# See it work in 5 seconds against bundled vulnerability fixtures.
+# Requires only semgrep on PATH; no project setup, no install in your repo.
+npx llm-audit demo
+
 # Scan the current repo
 npx llm-audit scan
 
