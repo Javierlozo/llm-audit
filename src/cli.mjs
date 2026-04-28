@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// @iberiatech/llm-audit — CLI entry
+// llm-audit — CLI entry
 //
 // Subcommands:
 //   scan [paths...]   Run the rule pack with semgrep against given paths (default: .)
@@ -82,7 +82,7 @@ function cmdInit() {
 
 function help() {
   console.log(
-`@iberiatech/llm-audit — static analysis for LLM-application code
+`llm-audit — static analysis for LLM-application code
 
 usage:
   llm-audit scan [paths...]   run the rule pack against given paths (default: .)

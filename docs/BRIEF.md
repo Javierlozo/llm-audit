@@ -1,4 +1,4 @@
-# `@iberiatech/llm-audit` — Project Brief
+# `llm-audit` — Project Brief
 
 > Static analysis for LLM-application code. OWASP LLM Top 10, at commit time.
 
@@ -91,4 +91,4 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 v0 scaffold. Five rules implemented with passing/failing fixtures.
 Repository: `github.com/<your-handle>/llm-audit` (not yet created).
-npm: `@iberiatech/llm-audit` (not yet published).
+npm: `llm-audit` (not yet published).

@@ -1,4 +1,4 @@
-# @iberiatech/llm-audit
+# llm-audit
 
 > Static analysis for LLM-application code. OWASP LLM Top 10 at commit time.
 
@@ -29,7 +29,7 @@ This pack targets that gap. Rules map to the [OWASP Top 10 for LLM Applications]
 ## Install
 
 ```bash
-npm i -D @iberiatech/llm-audit
+npm i -D llm-audit
 brew install semgrep   # or: pipx install semgrep
 ```
 
@@ -46,7 +46,7 @@ npx llm-audit init
 Or run the rules directly with Semgrep:
 
 ```bash
-semgrep --config node_modules/@iberiatech/llm-audit/rules .
+semgrep --config node_modules/llm-audit/rules .
 ```
 
 ## Rules in v0
