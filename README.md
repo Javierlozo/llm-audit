@@ -81,6 +81,50 @@ JSON envelope shape:
 `scan` exits **0** when there are no findings, **1** when there are, regardless
 of output format.
 
+## Using with Claude Code, Cursor, or Codex CLI
+
+`llm-audit` is built for the exact problem AI coding assistants quietly
+introduce, so the highest-leverage place to invoke it is from inside the
+assistant itself. Two integration paths.
+
+### 1. Install the Claude Code skill (recommended)
+
+Drop a project-local `SKILL.md` into `.claude/skills/llm-audit/` so any
+agent that reads the universal skill format (Claude Code, Cursor, Codex
+CLI, Antigravity, Gemini CLI) picks it up automatically:
+
+```bash
+npx llm-audit init --skill        # hook + workflow + skill
+npx llm-audit init --skill-only   # just the skill
+```
+
+The skill tells the agent **when** to invoke `llm-audit` (when editing
+files that import `openai`, `@anthropic-ai/sdk`, `ai`, `@ai-sdk/*`, etc.),
+**how** to invoke it (`npx llm-audit scan --json`), and **how** to
+interpret each rule's findings with the canonical fix per OWASP entry.
+
+### 2. Manual rule for users who don't want the skill file
+
+If you'd rather not commit a `.claude/skills/` file to your repo, paste
+this into your agent rules (`CLAUDE.md`, `.cursorrules`, `AGENTS.md`,
+or your tool's equivalent) instead:
+
+> Before committing any change that touches LLM-integrated code (imports
+> from `openai`, `@anthropic-ai/sdk`, `ai`, `@ai-sdk/*`, or any file
+> calling `chat.completions.create` / `messages.create` / `generateText` /
+> `streamText`), run `npx llm-audit scan --json` against the changed
+> paths. Treat the `findings` array as the authoritative list of issues
+> to fix. Each finding has `ruleId`, `owasp`, `severity`, `path`,
+> `startLine`, `endLine`, and `message`. Fix the code per the message,
+> then re-run until the array is empty. Never bypass the rule by
+> suppressing the finding.
+
+Either path works. The skill is a strict superset (more context for the
+agent, automatic loading) but requires the file to live in your repo.
+
+The JSON envelope is a stable contract (`schemaVersion: 1`), so agents
+can rely on the field names without breaking on a future release.
+
 ## Versions and updates
 
 `llm-audit` does **not** check for updates on every run. No background

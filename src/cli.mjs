@@ -24,6 +24,7 @@ const __dirname = dirname(__filename);
 const PKG_ROOT = resolve(__dirname, "..");
 const RULES_DIR = join(PKG_ROOT, "rules");
 const TEMPLATES_DIR = join(PKG_ROOT, "templates");
+const SKILLS_DIR = join(PKG_ROOT, "skills");
 
 function getVersion() {
   try {
@@ -363,8 +364,10 @@ function cmdInit(args) {
   const cwd = process.cwd();
   const force = args.includes("--force");
   const dryRun = args.includes("--dry-run");
+  const installSkill = args.includes("--skill") || args.includes("--skill-only");
+  const skillOnly = args.includes("--skill-only");
 
-  function writeOrRefuse(srcRelTemplate, destPath, exec = false) {
+  function writeOrRefuse(srcAbsPath, destPath, exec = false) {
     if (dryRun) {
       const exists = existsSync(destPath);
       console.log(
@@ -382,24 +385,47 @@ function cmdInit(args) {
       );
       process.exit(1);
     }
-    copyFileSync(join(TEMPLATES_DIR, srcRelTemplate), destPath);
+    copyFileSync(srcAbsPath, destPath);
     if (exec) spawnSync("chmod", ["+x", destPath]);
     console.log(`wrote ${destPath}`);
   }
 
-  // Husky pre-commit
-  const huskyDir = join(cwd, ".husky");
-  if (!existsSync(huskyDir) && !dryRun) {
-    mkdirSync(huskyDir, { recursive: true });
-  }
-  writeOrRefuse("husky-pre-commit", join(huskyDir, "pre-commit"), true);
+  if (!skillOnly) {
+    // Husky pre-commit
+    const huskyDir = join(cwd, ".husky");
+    if (!existsSync(huskyDir) && !dryRun) {
+      mkdirSync(huskyDir, { recursive: true });
+    }
+    writeOrRefuse(
+      join(TEMPLATES_DIR, "husky-pre-commit"),
+      join(huskyDir, "pre-commit"),
+      true
+    );
 
-  // GitHub Action
-  const ghDir = join(cwd, ".github", "workflows");
-  if (!existsSync(ghDir) && !dryRun) {
-    mkdirSync(ghDir, { recursive: true });
+    // GitHub Action
+    const ghDir = join(cwd, ".github", "workflows");
+    if (!existsSync(ghDir) && !dryRun) {
+      mkdirSync(ghDir, { recursive: true });
+    }
+    writeOrRefuse(
+      join(TEMPLATES_DIR, "github-action.yml"),
+      join(ghDir, "llm-audit.yml")
+    );
   }
-  writeOrRefuse("github-action.yml", join(ghDir, "llm-audit.yml"));
+
+  // Claude Code skill (project-local). Off by default; opt in with
+  // --skill (writes the hook + workflow + skill) or --skill-only
+  // (writes just the skill).
+  if (installSkill) {
+    const skillDir = join(cwd, ".claude", "skills", "llm-audit");
+    if (!existsSync(skillDir) && !dryRun) {
+      mkdirSync(skillDir, { recursive: true });
+    }
+    writeOrRefuse(
+      join(SKILLS_DIR, "llm-audit", "SKILL.md"),
+      join(skillDir, "SKILL.md")
+    );
+  }
 
   if (dryRun) {
     console.log("");
@@ -409,7 +435,31 @@ function cmdInit(args) {
     return;
   }
 
+  if (skillOnly) {
+    console.log("");
+    console.log(
+      "✓ Claude Code skill installed at .claude/skills/llm-audit/SKILL.md"
+    );
+    console.log(
+      "  Claude Code (and any tool that reads the .claude/skills/ format)"
+    );
+    console.log(
+      "  will pick it up automatically next session. The skill autoloads"
+    );
+    console.log(
+      "  when the agent edits LLM-integrated code or before commits that"
+    );
+    console.log("  touch it.");
+    return;
+  }
+
   console.log("");
+  if (installSkill) {
+    console.log(
+      "✓ Claude Code skill installed at .claude/skills/llm-audit/SKILL.md"
+    );
+    console.log("");
+  }
   const husky = detectHuskyState(cwd);
 
   if (husky.inDeps && husky.initialized) {
@@ -606,6 +656,8 @@ EXAMPLES
   llm-audit scan src              Scan a directory (human-readable)
   llm-audit scan --json src       Scan and emit findings as JSON for agents/CI
   llm-audit scan --sarif src      Scan and emit SARIF 2.1.0 for GitHub Code Scanning
+  llm-audit init --skill          Install pre-commit hook + CI + Claude Code skill
+  llm-audit init --skill-only     Install just the Claude Code skill
   llm-audit init --dry-run        Preview files \`init\` would write
 
 USAGE
@@ -615,12 +667,18 @@ COMMANDS
   demo                            Run the rule pack against bundled fixtures
   doctor                          Diagnose dependencies and project setup
   scan [paths...] [flags]         Run the rule pack against given paths (default: .)
-  init [--force] [--dry-run]      Install pre-commit hook + CI workflow
+  init [flags]                    Install pre-commit hook + CI workflow + optional skill
   rules                           List rule IDs, severities, and OWASP mappings
 
 SCAN FLAGS
   --json                          Emit findings as JSON (versioned envelope)
   --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
+
+INIT FLAGS
+  --force                         Overwrite existing files
+  --dry-run                       Preview without writing
+  --skill                         Also install the Claude Code skill (.claude/skills/llm-audit/)
+  --skill-only                    Install only the skill, not the hook or workflow
 
 FLAGS
   --version                       Print version and exit
