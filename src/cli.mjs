@@ -2,9 +2,14 @@
 // llm-audit — CLI entry
 //
 // Subcommands:
+//   demo              Run the rule pack against bundled vulnerable fixtures
 //   scan [paths...]   Run the rule pack with semgrep against given paths (default: .)
-//   init              Install a husky pre-commit hook + a GitHub Action workflow
+//   init [--force]    Install a husky pre-commit hook + a GitHub Action workflow
 //   rules             List the rule IDs in this pack
+//
+// Flags:
+//   --version         Print version and exit
+//   -h, --help        Show usage
 //
 // Semgrep is a peer dependency. Install with `brew install semgrep` or
 // `pipx install semgrep`. The CLI shells out to it.
@@ -19,6 +24,46 @@ const __dirname = dirname(__filename);
 const PKG_ROOT = resolve(__dirname, "..");
 const RULES_DIR = join(PKG_ROOT, "rules");
 const TEMPLATES_DIR = join(PKG_ROOT, "templates");
+
+function getVersion() {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(join(PKG_ROOT, "package.json"), "utf8")
+    );
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+}
+
+const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "rules"];
+
+function levenshtein(a, b) {
+  const m = a.length;
+  const n = b.length;
+  if (m === 0) return n;
+  if (n === 0) return m;
+  const dp = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] =
+        a[i - 1] === b[j - 1]
+          ? dp[i - 1][j - 1]
+          : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+    }
+  }
+  return dp[m][n];
+}
+
+function suggestSubcommand(input) {
+  const ranked = KNOWN_SUBCOMMANDS
+    .map((c) => [c, levenshtein(input, c)])
+    .filter(([, d]) => d <= 3)
+    .sort((a, b) => a[1] - b[1]);
+  return ranked.length ? ranked[0][0] : null;
+}
 
 function ensureSemgrep() {
   const r = spawnSync("semgrep", ["--version"], { stdio: "ignore" });
@@ -40,6 +85,16 @@ function cmdScan(args) {
     ["--config", RULES_DIR, "--error", "--metrics=off", "--", ...paths],
     { stdio: "inherit" }
   );
+  // `semgrep --error` exits 0 when nothing fires, 1 when at least one rule
+  // hit. A clean scan can feel anticlimactic; nudge first-time users toward
+  // `demo` so they can see what the rules look like when they fire.
+  if (r.status === 0) {
+    console.log("");
+    console.log(
+      "0 findings — clean. To see what these rules catch on intentionally"
+    );
+    console.log("vulnerable code, try: `npx llm-audit demo`");
+  }
   process.exit(r.status ?? 1);
 }
 
@@ -127,6 +182,31 @@ function cmdRules() {
   }
 }
 
+function detectHuskyState(cwd) {
+  const pkgPath = join(cwd, "package.json");
+  let inDeps = false;
+  let hasPrepare = false;
+  if (existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
+      inDeps = !!(
+        (pkg.dependencies && pkg.dependencies.husky) ||
+        (pkg.devDependencies && pkg.devDependencies.husky)
+      );
+      hasPrepare = !!(
+        pkg.scripts &&
+        typeof pkg.scripts.prepare === "string" &&
+        /husky/.test(pkg.scripts.prepare)
+      );
+    } catch {
+      // ignore malformed package.json; treat as no husky
+    }
+  }
+  // husky v9 creates .husky/_/ when initialized
+  const initialized = existsSync(join(cwd, ".husky", "_"));
+  return { inDeps, hasPrepare, initialized };
+}
+
 function cmdInit(args) {
   const cwd = process.cwd();
   const force = args.includes("--force");
@@ -158,26 +238,68 @@ function cmdInit(args) {
   writeOrRefuse("github-action.yml", join(ghDir, "llm-audit.yml"));
 
   console.log("");
-  console.log("next steps:");
-  console.log("  - install husky if you haven't: `npm i -D husky && npx husky init`");
-  console.log("  - install semgrep: `brew install semgrep`");
-  console.log("  - try a scan: `npx llm-audit scan`");
+  const husky = detectHuskyState(cwd);
+
+  if (husky.inDeps && husky.initialized) {
+    console.log("✓ husky is installed and initialized.");
+    console.log("  the pre-commit hook will run on your next commit.");
+  } else if (husky.inDeps && !husky.initialized) {
+    console.log("husky is installed but not initialized in this clone.");
+    if (husky.hasPrepare) {
+      console.log("  finish setup with:  npm run prepare");
+    } else {
+      console.log(
+        "  finish setup with:  npm pkg set scripts.prepare='husky' && npm run prepare"
+      );
+    }
+  } else {
+    console.log("husky is NOT installed. The pre-commit hook will not run yet.");
+    console.log("  to wire it up:");
+    console.log("    npm i -D husky");
+    console.log("    npm pkg set scripts.prepare='husky'");
+    console.log("    npm run prepare");
+    console.log(
+      "  (avoid `npx husky init` here — it conflicts with the pre-commit hook just written.)"
+    );
+  }
+
+  console.log("");
+  console.log("other things to verify:");
+  console.log("  - semgrep installed:    `semgrep --version`  (else `brew install semgrep`)");
+  console.log("  - try a clean scan:     `npx llm-audit scan`");
+  console.log("  - see the demo:         `npx llm-audit demo`");
 }
 
-function help() {
-  console.log(
-`llm-audit — static analysis for LLM-application code
+function helpText() {
+  const v = getVersion();
+  return `llm-audit ${v}
+Static analysis for TypeScript and JavaScript LLM applications.
+OWASP LLM Top 10 at commit time.
 
-usage:
-  llm-audit scan [paths...]   run the rule pack against given paths (default: .)
-  llm-audit demo              run the rule pack against bundled vulnerable fixtures
-  llm-audit init              install pre-commit hook + CI workflow
-  llm-audit rules             list rule IDs, severities, and OWASP mappings
-  llm-audit --help            show this message
+EXAMPLES
+  llm-audit demo                  See the rules fire on bundled fixtures
+  llm-audit scan src              Scan a directory in your project
+  llm-audit init                  Wire up pre-commit hook + CI workflow
 
-rules: ${RULES_DIR}
-docs:  ${join(PKG_ROOT, "docs")}`
-  );
+USAGE
+  llm-audit <command> [options]
+
+COMMANDS
+  demo                            Run the rule pack against bundled fixtures
+  scan [paths...]                 Run the rule pack against given paths (default: .)
+  init [--force]                  Install pre-commit hook + CI workflow
+  rules                           List rule IDs, severities, and OWASP mappings
+
+FLAGS
+  --version                       Print version and exit
+  -h, --help                      Show this message
+
+LEARN MORE
+  Project page    https://luislozoya.com/llm-audit
+  Repo            https://github.com/Javierlozo/llm-audit
+  npm             https://www.npmjs.com/package/llm-audit
+  Issues / bugs   https://github.com/Javierlozo/llm-audit/issues
+`;
 }
 
 const [, , sub, ...rest] = process.argv;
@@ -194,13 +316,26 @@ switch (sub) {
   case "demo":
     cmdDemo();
     break;
+  case "--version":
+  case "-v":
+    console.log(`llm-audit ${getVersion()}`);
+    break;
   case undefined:
   case "-h":
   case "--help":
-    help();
+    // Help requested explicitly: print to stdout per clig.dev.
+    process.stdout.write(helpText());
     break;
   default:
-    console.error(`unknown subcommand: ${sub}`);
-    help();
+    // Misuse: print the error and a "did you mean" hint to stderr per
+    // clig.dev. Don't dump the full help; point to it.
+    process.stderr.write(`unknown subcommand: ${sub}\n`);
+    {
+      const guess = suggestSubcommand(sub);
+      if (guess) {
+        process.stderr.write(`did you mean: ${guess}?\n`);
+      }
+    }
+    process.stderr.write("run `llm-audit --help` to see available commands.\n");
     process.exit(2);
 }

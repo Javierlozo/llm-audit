@@ -19,6 +19,46 @@ the long-form rationale behind each rule, and
 empirical comparison against `p/ai-best-practices` and other LLM-security
 tooling.
 
+## Quickstart
+
+You just ran `npm i llm-audit`. Now what?
+
+```bash
+# 1. Install the engine (one-time, system-wide).
+brew install semgrep        # or: pipx install semgrep
+
+# 2. See what the rules catch in 5 seconds. No setup in your repo.
+npx llm-audit demo
+
+# 3. Run on your own code.
+npx llm-audit scan
+```
+
+That's enough to evaluate whether `llm-audit` is worth adopting. To make
+it permanent, see **Adopt in your project** below.
+
+## Adopt in your project
+
+`llm-audit init` drops a husky pre-commit hook and a GitHub Action into
+your repo. The hook only runs once husky is installed and initialized:
+
+```bash
+npx llm-audit init                     # writes .husky/pre-commit + GH Action
+
+# If husky isn't already in this project, finish the setup:
+npm i -D husky
+npm pkg set scripts.prepare='husky'
+npm run prepare
+```
+
+Don't run `npx husky init` after `llm-audit init`: it conflicts with the
+pre-commit file `llm-audit init` just wrote. The three lines above use
+husky v9's manual setup, which doesn't have that conflict.
+
+`llm-audit init` refuses to overwrite existing files; pass `--force` if
+you really mean it. Threat model and rationale in
+[`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md).
+
 ## Why
 
 The strongest existing rule pack — Semgrep's official
@@ -43,33 +83,10 @@ Patterns covered:
 
 The full rule list is in [`docs/RULES.md`](docs/RULES.md).
 
-## Install
+## Run rules directly with Semgrep (no install needed)
 
-```bash
-npm i -D llm-audit
-brew install semgrep   # or: pipx install semgrep
-```
-
-## Use
-
-```bash
-# See it work in 5 seconds against bundled vulnerability fixtures.
-# Requires only semgrep on PATH; no project setup, no install in your repo.
-npx llm-audit demo
-
-# Scan the current repo
-npx llm-audit scan
-
-# Wire up a husky pre-commit hook + a GitHub Action
-npx llm-audit init
-```
-
-> `llm-audit init` writes `.husky/pre-commit` and `.github/workflows/llm-audit.yml`.
-> If either file already exists it refuses to overwrite. Pass `--force` to override.
-> See [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md) for the project's own
-> self-audit and the threat model behind this behavior.
-
-Or run the rules directly with Semgrep:
+If you don't want to install the package, the rule pack itself is a
+plain Semgrep configuration:
 
 ```bash
 semgrep --config node_modules/llm-audit/rules .
