@@ -81,6 +81,29 @@ JSON envelope shape:
 `scan` exits **0** when there are no findings, **1** when there are, regardless
 of output format.
 
+## Versions and updates
+
+`llm-audit` does **not** check for updates on every run. No background
+network calls, no daily cache files, no surprise. The trade-off: you
+won't be notified of new versions automatically.
+
+To check whether you're current, run:
+
+```bash
+npx llm-audit doctor
+```
+
+`doctor` makes one on-demand request to the npm registry and prints
+either `is up to date` or `is out of date (latest is N.N.N)` with the
+upgrade command. Same network call you'd make manually with
+`npm view llm-audit version`, just packaged into the diagnostic.
+
+To upgrade:
+
+```bash
+npm i llm-audit@latest
+```
+
 ## Adopt in your project
 
 `llm-audit init` drops a husky pre-commit hook and a GitHub Action into

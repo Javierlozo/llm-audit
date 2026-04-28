@@ -65,6 +65,41 @@ function suggestSubcommand(input) {
   return ranked.length ? ranked[0][0] : null;
 }
 
+// Numeric semver compare, e.g. "0.0.10" > "0.0.9" → positive.
+// Ignores prerelease tags; we don't ship those.
+function compareSemver(a, b) {
+  const pa = String(a).split(".").map((n) => parseInt(n, 10) || 0);
+  const pb = String(b).split(".").map((n) => parseInt(n, 10) || 0);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const da = pa[i] ?? 0;
+    const db = pb[i] ?? 0;
+    if (da !== db) return da - db;
+  }
+  return 0;
+}
+
+// One-shot, on-demand version check. Used only by `doctor`. We deliberately
+// do not call this on every run — see the README "Versions and updates"
+// section for the rationale (security-tool optics, predictability, no
+// background phoning home).
+async function fetchLatestVersion() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 3000);
+  try {
+    const r = await fetch("https://registry.npmjs.org/llm-audit/latest", {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return typeof d?.version === "string" ? d.version : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function ensureSemgrep() {
   const r = spawnSync("semgrep", ["--version"], { stdio: "ignore" });
   if (r.status !== 0) {
@@ -407,7 +442,7 @@ function cmdInit(args) {
   console.log("  - see the demo:         `npx llm-audit demo`");
 }
 
-function cmdDoctor() {
+async function cmdDoctor() {
   const cwd = process.cwd();
   let warnings = 0;
   let failures = 0;
@@ -421,7 +456,28 @@ function cmdDoctor() {
     if (fix) console.log(`         ${fix}`);
   }
 
-  console.log(`llm-audit doctor (${getVersion()})`);
+  const current = getVersion();
+  console.log(`llm-audit doctor (${current})`);
+  console.log("");
+
+  console.log("Updates");
+  const latest = await fetchLatestVersion();
+  if (latest === null) {
+    status(
+      "version check",
+      "warn",
+      "could not reach the npm registry (offline, rate-limited, or behind a proxy)"
+    );
+  } else if (compareSemver(current, latest) >= 0) {
+    status(`llm-audit ${current} is up to date`, "ok");
+  } else {
+    status(
+      `llm-audit ${current} is out of date (latest is ${latest})`,
+      "warn",
+      "fix: npm i llm-audit@latest"
+    );
+  }
+
   console.log("");
   console.log("Engine");
   // semgrep
@@ -593,7 +649,7 @@ switch (sub) {
     cmdDemo();
     break;
   case "doctor":
-    cmdDoctor();
+    await cmdDoctor();
     break;
   case "--version":
   case "-v":
