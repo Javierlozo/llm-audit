@@ -4,7 +4,7 @@
   "description": "Static analysis for LLM-application code. OWASP LLM Top 10 at commit time.",
   "type": "module",
   "bin": {
-    "llm-audit": "./src/cli.mjs"
+    "llm-audit": "src/cli.mjs"
   },
   "files": [
     "src",
