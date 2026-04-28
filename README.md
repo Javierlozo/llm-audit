@@ -60,6 +60,11 @@ npx llm-audit scan
 npx llm-audit init
 ```
 
+> `llm-audit init` writes `.husky/pre-commit` and `.github/workflows/llm-audit.yml`.
+> If either file already exists it refuses to overwrite. Pass `--force` to override.
+> See [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md) for the project's own
+> self-audit and the threat model behind this behavior.
+
 Or run the rules directly with Semgrep:
 
 ```bash

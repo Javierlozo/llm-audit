@@ -32,9 +32,12 @@ function ensureSemgrep() {
 function cmdScan(args) {
   ensureSemgrep();
   const paths = args.length ? args : ["."];
+  // Use `--` to lock interpretation: any path starting with `-` is a path,
+  // not a semgrep flag. Defends against scenarios where a wrapper or piped
+  // input could otherwise inject semgrep flags via path arguments.
   const r = spawnSync(
     "semgrep",
-    ["--config", RULES_DIR, "--error", "--metrics=off", ...paths],
+    ["--config", RULES_DIR, "--error", "--metrics=off", "--", ...paths],
     { stdio: "inherit" }
   );
   process.exit(r.status ?? 1);
@@ -55,23 +58,35 @@ function cmdRules() {
   }
 }
 
-function cmdInit() {
+function cmdInit(args) {
   const cwd = process.cwd();
+  const force = args.includes("--force");
+
+  function writeOrRefuse(srcRelTemplate, destPath, exec = false) {
+    if (existsSync(destPath) && !force) {
+      console.error(
+        `refusing to overwrite ${destPath} (use --force to override)`
+      );
+      console.error(
+        `  hint: if this file came from a previous llm-audit init, ` +
+          `delete it first or pass --force.`
+      );
+      process.exit(1);
+    }
+    copyFileSync(join(TEMPLATES_DIR, srcRelTemplate), destPath);
+    if (exec) spawnSync("chmod", ["+x", destPath]);
+    console.log(`wrote ${destPath}`);
+  }
 
   // Husky pre-commit
   const huskyDir = join(cwd, ".husky");
   if (!existsSync(huskyDir)) mkdirSync(huskyDir, { recursive: true });
-  const preCommitDest = join(huskyDir, "pre-commit");
-  copyFileSync(join(TEMPLATES_DIR, "husky-pre-commit"), preCommitDest);
-  spawnSync("chmod", ["+x", preCommitDest]);
-  console.log(`wrote ${preCommitDest}`);
+  writeOrRefuse("husky-pre-commit", join(huskyDir, "pre-commit"), true);
 
   // GitHub Action
   const ghDir = join(cwd, ".github", "workflows");
   if (!existsSync(ghDir)) mkdirSync(ghDir, { recursive: true });
-  const ciDest = join(ghDir, "llm-audit.yml");
-  copyFileSync(join(TEMPLATES_DIR, "github-action.yml"), ciDest);
-  console.log(`wrote ${ciDest}`);
+  writeOrRefuse("github-action.yml", join(ghDir, "llm-audit.yml"));
 
   console.log("");
   console.log("next steps:");
@@ -101,7 +116,7 @@ switch (sub) {
     cmdScan(rest);
     break;
   case "init":
-    cmdInit();
+    cmdInit(rest);
     break;
   case "rules":
     cmdRules();

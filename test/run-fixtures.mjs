@@ -36,12 +36,21 @@ function runSemgrep(ruleFile, target) {
     console.error(`semgrep error on ${target}:`, r.stderr);
     return null;
   }
+  let parsed;
   try {
-    return JSON.parse(r.stdout);
+    parsed = JSON.parse(r.stdout);
   } catch {
     console.error(`could not parse semgrep output for ${target}`);
     return null;
   }
+  // Defense-in-depth: validate the shape we depend on. Same pattern our
+  // own model-output-parsed-without-schema rule warns against, but the
+  // source here is trusted (semgrep's documented JSON schema).
+  if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.results)) {
+    console.error(`unexpected semgrep output shape for ${target}`);
+    return null;
+  }
+  return parsed;
 }
 
 function countMarkers(filePath, ruleId) {

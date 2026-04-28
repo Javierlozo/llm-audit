@@ -1,6 +1,6 @@
 {
   "name": "llm-audit",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Static analysis for LLM-application code. OWASP LLM Top 10 at commit time.",
   "type": "module",
   "bin": {

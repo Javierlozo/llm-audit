@@ -1,12 +1,13 @@
 #!/usr/bin/env sh
 # Installed by `npx llm-audit init`. Runs the rule pack on staged files only,
 # so it stays fast on large repos.
+#
+# Uses null-delimited filenames so that filenames containing spaces, glob
+# metacharacters, or other shell-significant bytes are passed verbatim to
+# semgrep instead of being word-split or glob-expanded by the shell.
 
-# Collect staged JS/TS files. If none, exit clean.
-staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|mjs|cjs)$' || true)
-if [ -z "$staged" ]; then
-  exit 0
-fi
+set -eu
 
-# shellcheck disable=SC2086
-npx --no-install llm-audit scan $staged
+git diff --cached --name-only --diff-filter=ACMR -z |
+  grep -zE '\.(js|jsx|ts|tsx|mjs|cjs)$' |
+  xargs -0 -r npx --no-install llm-audit scan --
