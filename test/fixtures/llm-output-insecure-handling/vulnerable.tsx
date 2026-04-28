@@ -48,9 +48,13 @@ export async function vuln4(el: HTMLElement) {
 }
 
 // Model output passed to dangerouslySetInnerHTML in JSX.
-export function VulnComponent({ html }: { html: string }) {
+export async function VulnComponent() {
+  const r = await generateText({
+    model: "claude-opus-4-7" as any,
+    prompt: "give me html",
+  });
   // ruleid: llm-output-insecure-handling
-  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+  return <div dangerouslySetInnerHTML={{ __html: r.text }} />;
 }
 
 // execSync with a model-derived string.

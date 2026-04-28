@@ -30,22 +30,22 @@ rules:
     mode: taint
     pattern-sources:
       - pattern-either:
-          # OpenAI chat completions
-          - pattern: (await $C.chat.completions.create(...)).choices[0].message.content
-          - pattern: (await $C.chat.completions.create(...)).choices[$I].message.content
-          # OpenAI Responses API
-          - pattern: (await $C.responses.create(...)).output_text
-          # Anthropic messages
-          - pattern: (await $C.messages.create(...)).content[0].text
-          - pattern: (await $C.messages.create(...)).content[$I].text
-          # AI SDK (Vercel `ai` package)
-          - pattern: (await generateText(...)).text
-          - pattern: (await generateObject(...)).object
+          - pattern: $C.chat.completions.create(...)
+          - pattern: $C.responses.create(...)
+          - pattern: $C.messages.create(...)
+          - pattern: generateText(...)
+          - pattern: streamText(...)
+          - pattern: generateObject(...)
+          - pattern: streamObject(...)
     pattern-sinks:
       - pattern-either:
           - pattern: eval(...)
           - pattern: new Function(...)
           - pattern: Function(...)
+          - pattern: exec(...)
+          - pattern: execSync(...)
+          - pattern: spawn(...)
+          - pattern: spawnSync(...)
           - pattern: $CHILD.exec(...)
           - pattern: $CHILD.execSync(...)
           - pattern: $CHILD.spawn(...)
@@ -55,3 +55,10 @@ rules:
               <$TAG dangerouslySetInnerHTML={{ __html: $X }} />
           - pattern: |
               <$TAG dangerouslySetInnerHTML={{ __html: $X }} ...></$TAG>
+    pattern-sanitizers:
+      - pattern: DOMPurify.sanitize(...)
+      - pattern: $X.sanitize(...)
+      - pattern: sanitizeHtml(...)
+      - pattern: escape(...)
+      - pattern: $SCHEMA.parse(...)
+      - pattern: $SCHEMA.safeParse(...)

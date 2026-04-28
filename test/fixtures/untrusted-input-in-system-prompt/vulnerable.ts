@@ -1,4 +1,3 @@
-// ruleid: untrusted-input-in-system-prompt
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { generateText, streamText } from "ai";

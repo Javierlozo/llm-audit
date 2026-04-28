@@ -50,11 +50,15 @@ rules:
               - pattern: |
                   generateText({..., system: `...${$REQ.body.$F}...`, ...})
               - pattern: |
+                  generateText({..., system: `...${$REQ.query.$F}...`, ...})
+              - pattern: |
                   streamText({..., system: $REQ.body.$F, ...})
               - pattern: |
                   streamText({..., system: $REQ.query.$F, ...})
               - pattern: |
                   streamText({..., system: `...${$REQ.body.$F}...`, ...})
+              - pattern: |
+                  streamText({..., system: `...${$REQ.query.$F}...`, ...})
               - pattern: |
                   generateObject({..., system: $REQ.body.$F, ...})
               - pattern: |
