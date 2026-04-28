@@ -27,15 +27,59 @@ You just ran `npm i llm-audit`. Now what?
 # 1. Install the engine (one-time, system-wide).
 brew install semgrep        # or: pipx install semgrep
 
-# 2. See what the rules catch in 5 seconds. No setup in your repo.
+# 2. Sanity-check setup. Lists missing dependencies and how to fix them.
+npx llm-audit doctor
+
+# 3. See what the rules catch in 5 seconds. No setup in your repo.
 npx llm-audit demo
 
-# 3. Run on your own code.
+# 4. Run on your own code.
 npx llm-audit scan
 ```
 
 That's enough to evaluate whether `llm-audit` is worth adopting. To make
 it permanent, see **Adopt in your project** below.
+
+## Machine-readable output (CI, agents, dashboards)
+
+`scan` supports two structured output formats for non-human consumers:
+
+```bash
+# Versioned JSON envelope (stable schema, schemaVersion: 1).
+# Useful for AI agents (Claude Code, Cursor) and custom dashboards.
+npx llm-audit scan --json src > findings.json
+
+# SARIF 2.1.0, the standard for security-tool output.
+# Upload directly to GitHub Code Scanning via codeql-action/upload-sarif.
+npx llm-audit scan --sarif src > findings.sarif
+```
+
+JSON envelope shape:
+
+```jsonc
+{
+  "schemaVersion": 1,
+  "tool": { "name": "llm-audit", "version": "0.0.5" },
+  "scannedPaths": ["src"],
+  "summary": { "findings": 0 },
+  "findings": [
+    {
+      "ruleId": "model-output-parsed-without-schema",
+      "severity": "WARNING",
+      "owasp": "LLM02",
+      "cwe": ["CWE-20"],
+      "path": "src/app/api/route.ts",
+      "startLine": 61,
+      "endLine": 61,
+      "message": "Model output is being parsed with `JSON.parse`...",
+      "lines": "..."
+    }
+  ]
+}
+```
+
+`scan` exits **0** when there are no findings, **1** when there are, regardless
+of output format.
 
 ## Adopt in your project
 

@@ -36,7 +36,7 @@ function getVersion() {
   }
 }
 
-const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "rules"];
+const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "rules", "doctor"];
 
 function levenshtein(a, b) {
   const m = a.length;
@@ -74,28 +74,145 @@ function ensureSemgrep() {
   }
 }
 
+// Stable JSON envelope schema. Bump schemaVersion when you make any
+// breaking change to the shape below. Consumers (CI, agents, dashboards)
+// can pin to a schemaVersion they understand.
+const JSON_SCHEMA_VERSION = 1;
+
 function cmdScan(args) {
   ensureSemgrep();
-  const paths = args.length ? args : ["."];
-  // Use `--` to lock interpretation: any path starting with `-` is a path,
-  // not a semgrep flag. Defends against scenarios where a wrapper or piped
-  // input could otherwise inject semgrep flags via path arguments.
+
+  // Parse our recognized flags out of args; everything else is a path.
+  // We accept `--json` and `--sarif` as output-format selectors, plus
+  // a defensive `--` literal that some users include explicitly.
+  let outputFormat = "human"; // "human" | "json" | "sarif"
+  const paths = [];
+  for (const arg of args) {
+    if (arg === "--") continue;
+    if (arg === "--json") {
+      outputFormat = "json";
+    } else if (arg === "--sarif") {
+      outputFormat = "sarif";
+    } else if (arg.startsWith("-")) {
+      process.stderr.write(`unknown flag: ${arg}\n`);
+      process.stderr.write(
+        "supported: --json, --sarif. run `llm-audit --help` for usage.\n"
+      );
+      process.exit(2);
+    } else {
+      paths.push(arg);
+    }
+  }
+  const targetPaths = paths.length ? paths : ["."];
+
+  if (outputFormat === "human") {
+    // Human-readable run via semgrep's default formatter.
+    // `--` locks interpretation: any path starting with `-` is a path,
+    // not a semgrep flag. Defends against scenarios where a wrapper or
+    // piped input could inject semgrep flags via path arguments.
+    const r = spawnSync(
+      "semgrep",
+      ["--config", RULES_DIR, "--error", "--metrics=off", "--", ...targetPaths],
+      { stdio: "inherit" }
+    );
+    // `semgrep --error` exits 0 when nothing fires, 1 when at least one
+    // rule hit. A clean scan can feel anticlimactic; nudge first-time
+    // users toward `demo` so they can see what the rules look like when
+    // they fire.
+    if (r.status === 0) {
+      console.log("");
+      console.log(
+        "0 findings — clean. To see what these rules catch on intentionally"
+      );
+      console.log("vulnerable code, try: `npx llm-audit demo`");
+    }
+    process.exit(r.status ?? 1);
+  }
+
+  if (outputFormat === "sarif") {
+    // Passthrough Semgrep's native SARIF 2.1.0 output. SARIF is the
+    // standard for security-tool output and lets users upload findings
+    // directly to GitHub Code Scanning via actions/codeql-action/upload-sarif.
+    // `--quiet` suppresses Semgrep's status box on stderr so the SARIF
+    // on stdout is the only meaningful output (clean for pipelines that
+    // redirect stdout to a `.sarif` file).
+    const r = spawnSync(
+      "semgrep",
+      [
+        "--config", RULES_DIR,
+        "--sarif",
+        "--metrics=off",
+        "--quiet",
+        "--",
+        ...targetPaths,
+      ],
+      { stdio: "inherit" }
+    );
+    process.exit(r.status === 1 ? 1 : r.status ?? 1);
+  }
+
+  // outputFormat === "json": run semgrep with --json, capture stdout,
+  // wrap in our versioned envelope, emit to stdout. Exit 0 on no
+  // findings, 1 on findings, mirrors human-mode convention.
   const r = spawnSync(
     "semgrep",
-    ["--config", RULES_DIR, "--error", "--metrics=off", "--", ...paths],
-    { stdio: "inherit" }
+    [
+      "--config", RULES_DIR,
+      "--json",
+      "--metrics=off",
+      "--quiet",
+      "--",
+      ...targetPaths,
+    ],
+    { encoding: "utf8" }
   );
-  // `semgrep --error` exits 0 when nothing fires, 1 when at least one rule
-  // hit. A clean scan can feel anticlimactic; nudge first-time users toward
-  // `demo` so they can see what the rules look like when they fire.
-  if (r.status === 0) {
-    console.log("");
-    console.log(
-      "0 findings — clean. To see what these rules catch on intentionally"
-    );
-    console.log("vulnerable code, try: `npx llm-audit demo`");
+
+  if (r.status !== 0 && r.status !== 1) {
+    process.stderr.write(r.stderr || "");
+    process.exit(r.status ?? 1);
   }
-  process.exit(r.status ?? 1);
+
+  let semgrepOut;
+  try {
+    semgrepOut = JSON.parse(r.stdout);
+  } catch (e) {
+    process.stderr.write(
+      `error: could not parse semgrep output: ${e.message}\n`
+    );
+    process.exit(1);
+  }
+  if (
+    !semgrepOut ||
+    typeof semgrepOut !== "object" ||
+    !Array.isArray(semgrepOut.results)
+  ) {
+    process.stderr.write("error: unexpected semgrep output shape\n");
+    process.exit(1);
+  }
+
+  const envelope = {
+    schemaVersion: JSON_SCHEMA_VERSION,
+    tool: { name: "llm-audit", version: getVersion() },
+    scannedPaths: targetPaths,
+    summary: {
+      findings: semgrepOut.results.length,
+    },
+    findings: semgrepOut.results.map((f) => ({
+      ruleId: ((f.check_id || "") + "").split(".").pop(),
+      severity: f.extra?.severity || "INFO",
+      owasp: f.extra?.metadata?.["owasp-llm"] || null,
+      cwe: Array.isArray(f.extra?.metadata?.cwe) ? f.extra.metadata.cwe : [],
+      path: f.path,
+      startLine: f.start?.line,
+      endLine: f.end?.line,
+      message: ((f.extra?.message || "") + "").trim(),
+      lines: f.extra?.lines || "",
+    })),
+  };
+
+  process.stdout.write(JSON.stringify(envelope, null, 2));
+  process.stdout.write("\n");
+  process.exit(envelope.findings.length === 0 ? 0 : 1);
 }
 
 function cmdDemo() {
@@ -210,8 +327,16 @@ function detectHuskyState(cwd) {
 function cmdInit(args) {
   const cwd = process.cwd();
   const force = args.includes("--force");
+  const dryRun = args.includes("--dry-run");
 
   function writeOrRefuse(srcRelTemplate, destPath, exec = false) {
+    if (dryRun) {
+      const exists = existsSync(destPath);
+      console.log(
+        `[dry-run] would write ${destPath}${exists ? " (already exists, would refuse without --force)" : ""}`
+      );
+      return;
+    }
     if (existsSync(destPath) && !force) {
       console.error(
         `refusing to overwrite ${destPath} (use --force to override)`
@@ -229,13 +354,25 @@ function cmdInit(args) {
 
   // Husky pre-commit
   const huskyDir = join(cwd, ".husky");
-  if (!existsSync(huskyDir)) mkdirSync(huskyDir, { recursive: true });
+  if (!existsSync(huskyDir) && !dryRun) {
+    mkdirSync(huskyDir, { recursive: true });
+  }
   writeOrRefuse("husky-pre-commit", join(huskyDir, "pre-commit"), true);
 
   // GitHub Action
   const ghDir = join(cwd, ".github", "workflows");
-  if (!existsSync(ghDir)) mkdirSync(ghDir, { recursive: true });
+  if (!existsSync(ghDir) && !dryRun) {
+    mkdirSync(ghDir, { recursive: true });
+  }
   writeOrRefuse("github-action.yml", join(ghDir, "llm-audit.yml"));
+
+  if (dryRun) {
+    console.log("");
+    console.log(
+      "dry-run: nothing was written. re-run without --dry-run to apply."
+    );
+    return;
+  }
 
   console.log("");
   const husky = detectHuskyState(cwd);
@@ -270,6 +407,137 @@ function cmdInit(args) {
   console.log("  - see the demo:         `npx llm-audit demo`");
 }
 
+function cmdDoctor() {
+  const cwd = process.cwd();
+  let warnings = 0;
+  let failures = 0;
+
+  function status(label, kind, fix = "") {
+    const tag =
+      kind === "ok" ? "[ok]  " : kind === "warn" ? "[warn]" : "[fail]";
+    if (kind === "warn") warnings++;
+    if (kind === "fail") failures++;
+    console.log(`  ${tag}  ${label}`);
+    if (fix) console.log(`         ${fix}`);
+  }
+
+  console.log(`llm-audit doctor (${getVersion()})`);
+  console.log("");
+  console.log("Engine");
+  // semgrep
+  const sg = spawnSync("semgrep", ["--version"], { encoding: "utf8" });
+  if (sg.status !== 0) {
+    status(
+      "semgrep installed",
+      "fail",
+      "fix: brew install semgrep   (or: pipx install semgrep)"
+    );
+  } else {
+    const version = (sg.stdout || "").trim().split("\n")[0];
+    status(`semgrep installed (${version})`, "ok");
+  }
+  // rules pack
+  if (existsSync(RULES_DIR)) {
+    const ruleCount = readdirSync(RULES_DIR).filter((f) =>
+      f.endsWith(".yaml")
+    ).length;
+    status(`rules pack readable (${ruleCount} rules)`, "ok");
+  } else {
+    status("rules pack readable", "fail", `expected at ${RULES_DIR}`);
+  }
+  // demo fixtures
+  const FIXTURES_DIR = join(PKG_ROOT, "test", "fixtures");
+  if (existsSync(FIXTURES_DIR)) {
+    status("demo fixtures bundled", "ok");
+  } else {
+    status(
+      "demo fixtures bundled",
+      "warn",
+      "`llm-audit demo` will not work; reinstall the package"
+    );
+  }
+  // templates
+  if (existsSync(TEMPLATES_DIR)) {
+    status("templates bundled", "ok");
+  } else {
+    status(
+      "templates bundled",
+      "warn",
+      "`llm-audit init` will not work; reinstall the package"
+    );
+  }
+
+  console.log("");
+  console.log("Project");
+  // git repo
+  if (existsSync(join(cwd, ".git"))) {
+    status("git repository detected", "ok");
+  } else {
+    status(
+      "git repository detected",
+      "warn",
+      "the pre-commit hook requires git; run `git init` if this is a new project"
+    );
+  }
+  // husky
+  const husky = detectHuskyState(cwd);
+  if (husky.inDeps && husky.initialized) {
+    status("husky installed and initialized", "ok");
+  } else if (husky.inDeps) {
+    status(
+      "husky installed but not initialized",
+      "warn",
+      husky.hasPrepare
+        ? "fix: npm run prepare"
+        : "fix: npm pkg set scripts.prepare='husky' && npm run prepare"
+    );
+  } else {
+    status(
+      "husky is not installed",
+      "warn",
+      "the pre-commit hook will not run until husky is set up; fix: " +
+        "npm i -D husky && npm pkg set scripts.prepare='husky' && npm run prepare"
+    );
+  }
+  // hook + workflow files presence
+  const hookPath = join(cwd, ".husky", "pre-commit");
+  if (existsSync(hookPath)) {
+    status(".husky/pre-commit hook present", "ok");
+  } else {
+    status(
+      ".husky/pre-commit hook present",
+      "warn",
+      "run `npx llm-audit init` to install"
+    );
+  }
+  const wfPath = join(cwd, ".github", "workflows", "llm-audit.yml");
+  if (existsSync(wfPath)) {
+    status(".github/workflows/llm-audit.yml present", "ok");
+  } else {
+    status(
+      ".github/workflows/llm-audit.yml present",
+      "warn",
+      "run `npx llm-audit init` to install"
+    );
+  }
+
+  console.log("");
+  console.log("Runtime");
+  status(`node ${process.version}`, "ok");
+
+  console.log("");
+  if (failures === 0 && warnings === 0) {
+    console.log("All checks passed.");
+  } else if (failures === 0) {
+    console.log(`${warnings} warning${warnings === 1 ? "" : "s"}.`);
+  } else {
+    console.log(
+      `${failures} failure${failures === 1 ? "" : "s"}, ${warnings} warning${warnings === 1 ? "" : "s"}.`
+    );
+  }
+  process.exit(failures > 0 ? 1 : 0);
+}
+
 function helpText() {
   const v = getVersion();
   return `llm-audit ${v}
@@ -278,17 +546,25 @@ OWASP LLM Top 10 at commit time.
 
 EXAMPLES
   llm-audit demo                  See the rules fire on bundled fixtures
-  llm-audit scan src              Scan a directory in your project
-  llm-audit init                  Wire up pre-commit hook + CI workflow
+  llm-audit doctor                Check semgrep, husky, and project state
+  llm-audit scan src              Scan a directory (human-readable)
+  llm-audit scan --json src       Scan and emit findings as JSON for agents/CI
+  llm-audit scan --sarif src      Scan and emit SARIF 2.1.0 for GitHub Code Scanning
+  llm-audit init --dry-run        Preview files \`init\` would write
 
 USAGE
   llm-audit <command> [options]
 
 COMMANDS
   demo                            Run the rule pack against bundled fixtures
-  scan [paths...]                 Run the rule pack against given paths (default: .)
-  init [--force]                  Install pre-commit hook + CI workflow
+  doctor                          Diagnose dependencies and project setup
+  scan [paths...] [flags]         Run the rule pack against given paths (default: .)
+  init [--force] [--dry-run]      Install pre-commit hook + CI workflow
   rules                           List rule IDs, severities, and OWASP mappings
+
+SCAN FLAGS
+  --json                          Emit findings as JSON (versioned envelope)
+  --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
 
 FLAGS
   --version                       Print version and exit
@@ -315,6 +591,9 @@ switch (sub) {
     break;
   case "demo":
     cmdDemo();
+    break;
+  case "doctor":
+    cmdDoctor();
     break;
   case "--version":
   case "-v":
