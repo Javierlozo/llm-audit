@@ -1,36 +1,56 @@
 # `llm-audit` — Project Brief
 
-> Static analysis for LLM-application code. OWASP LLM Top 10, at commit time.
+> Static analysis for **TypeScript and JavaScript** LLM-application code. OWASP
+> LLM Top 10, at commit time. A complement to Semgrep's `p/ai-best-practices`
+> for the TS/JS ecosystem the upstream pack does not cover.
 
 ## Problem
 
 AI coding assistants (Claude, Cursor, Kiro, Copilot) now write a substantial
-share of new application code. They produce a predictable, repeatable set of
-security failures that existing SAST tools were not built to catch:
+share of new application code. They reproduce a predictable set of security
+failures that existing SAST tools were not built to catch in TypeScript or
+JavaScript LLM apps:
 
-- Hallucinated or typosquatted dependencies (slopsquatting)
-- Hardcoded secrets baked into example-shaped code
-- Permissive defaults: `cors: '*'`, missing cookie flags, unbounded request bodies
-- Unsafe `dangerouslySetInnerHTML` and untrusted templating
-- Server Actions and route handlers that trust `request.json()` blindly
-- **LLM-specific sinks:** user input flowing directly into a system prompt, model
-  output piped into `eval` / raw HTML / shell, tool-calling handlers without
-  allowlists, retrieval contexts that mix untrusted text with system instructions
+- User input flowing into the LLM `system` role (Anthropic, OpenAI, Vercel AI SDK)
+- Model output piped into `eval` / `dangerouslySetInnerHTML` / `child_process.exec`
+- `JSON.parse` on raw model output with no schema validator on the path
+- Hardcoded LLM API keys in `new OpenAI({ apiKey: "sk-..." })` constructors
+- Server Actions and Next.js route handlers that forward `request.json()` to a
+  model with no zod / valibot at the boundary
+- Tool-calling handlers that dispatch on `toolCall.name` without an allowlist
+- Retrieval-augmented contexts that mix untrusted document text into the
+  `system` role
 
-Generic SAST (Semgrep, Snyk, ESLint security plugins) covers the first few
-categories well. The LLM-specific category has effectively no curated, maintained
-ruleset shipped as a one-install package.
+The most relevant existing rule pack — Semgrep's official
+[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices) —
+is **Python-only for LLM-app code**. Its 27 rules break down as 13 Python rules
+(LangChain + Python provider SDKs), 11 generic config rules (MCP, Claude Code
+settings, IDE configs), and 3 Bash hook rules. **Zero JavaScript or TypeScript
+rules.** Run it against a Next.js + Vercel AI SDK repo and it returns nothing.
+
+The TypeScript / JavaScript LLM-app ecosystem (Vercel AI SDK, OpenAI / Anthropic
+JS SDKs, Next.js route handlers and Server Actions, AI Gateway) is genuinely
+underweighted in the static-analysis tooling that exists today. That gap is the
+problem `llm-audit` addresses.
 
 ## Solution
 
-A focused Semgrep rule pack plus thin CLI wrapper. Targets the OWASP Top 10 for
-LLM Applications at static-analysis time. One install, opinionated defaults,
-sub-5 second pre-commit on changed files, full scan in CI.
+A focused Semgrep rule pack plus thin CLI wrapper, **scoped to TypeScript and
+JavaScript LLM-application code** and mapped to OWASP LLM Top 10. One install,
+opinionated defaults, sub-5 second pre-commit on changed files, full scan in CI.
+
+Positioned as a **complement** to Semgrep's `p/ai-best-practices`, not a
+replacement: that pack handles Python LLM apps and AI infrastructure configs
+(MCP, Claude Code hooks); `llm-audit` handles TS/JS LLM apps. Run both in the
+same repo and you cover the LLM Top 10 across both halves of the ecosystem.
 
 The rule pack is the product. The CLI is convenience. Generic security concerns
 (generic XSS, SQLi, secret scanning, dependency CVEs) are explicitly delegated
-to the tools that already do them well (Semgrep packs, gitleaks, npm audit,
-Socket.dev). We do not reimplement those.
+to the tools that already do them well (Semgrep `p/owasp-top-ten`, gitleaks,
+npm audit, Socket.dev). We do not reimplement those.
+
+For the full empirical comparison against `p/ai-best-practices` and other tools,
+see [`COMPETITIVE-LANDSCAPE.md`](./COMPETITIVE-LANDSCAPE.md).
 
 ## v1 Scope (10 to 12 rules)
 
@@ -53,24 +73,41 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 ## Differentiation
 
-- **Category nobody owns yet** at the static-analysis layer. Confirmed via npm
-  search: `eslint-plugin-security` is generic JS, `klg-llm-audit` is runtime
-  audit-logging, `secaudit` (the only existing package on that name) is an SEC
-  10-K analyzer. No competitor ships a maintained Semgrep pack for LLM Top 10.
+- **TypeScript and JavaScript depth, empirically validated.** Semgrep's official
+  `p/ai-best-practices` (the strongest existing alternative) ships 27 rules
+  across Python, generic configs, and Bash, with **zero JS/TS coverage**. Run
+  it against the `llm-audit` fixtures and it produces 0 findings on the same
+  files where `llm-audit` flags 21 violations across 5 rules. This is the
+  empirical gap: TypeScript Vercel AI SDK / OpenAI / Anthropic JS / Next.js
+  Server Action shapes are simply not covered upstream.
+- **Explicit OWASP LLM Top 10 mapping** in every rule's `metadata.owasp-llm`
+  field, so findings can be aggregated, gated, or surfaced as a compliance
+  artifact. Existing packs are organized as "best practices," not as an
+  OWASP-mapped audit surface.
 - **Research-flavored rationale.** Each rule documents the AI-assistant failure
-  mode it catches. `docs/RULES.md` and `docs/AI-FAILURE-MODES.md` (planned) are
-  the portfolio assets, not just the code.
-- **Distribution leverage.** Ships as a Semgrep pack first; the CLI is a
-  convenience wrapper. Lower maintenance than building a SAST engine from
-  scratch, and Semgrep is already trusted in the ecosystem.
+  mode it catches. `docs/RULES.md` and `docs/AI-FAILURE-MODES.md` are the
+  portfolio assets, not just the code.
+- **Distribution leverage.** Ships as a Semgrep pack first; the CLI is a thin
+  convenience wrapper around `semgrep --config <pack>`. Lower maintenance than
+  building a SAST engine from scratch, and Semgrep is already trusted in the
+  ecosystem.
 
 ## Pitch for g/d/n/a
 
-- MIT, no infra to operate, drops into any repo with `npm i -D` and `brew install semgrep`
+The gdna codebase is mostly React and Next.js. **Every existing OSS LLM-security
+SAST tool today (Semgrep `p/ai-best-practices`, HeadyZhang/agent-audit) is
+Python-only.** Pointing them at gdna's repos returns nothing. `llm-audit` is
+the only OSS option that actually covers the stack gdna ships.
+
+- MIT, no infra to operate, drops into any TS/JS repo with `npm i -D` and `brew install semgrep`
 - Catches a class of bugs AI assistants are actively introducing across teams
+  building LLM features in Next.js / Vercel AI SDK
 - Pre-commit + CI share the same rule pack; same config in both places
 - Could become the internal "before-you-push" standard across all g/d/n/a repos
+  shipping AI features
 - Aligns with shift-left and secure-by-default posture
+- Bonus: every rule maps to an OWASP LLM Top 10 category, which makes the
+  output presentable to clients or auditors without translation
 
 ## Non-goals (v1)
 

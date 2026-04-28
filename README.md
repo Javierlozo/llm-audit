@@ -1,30 +1,47 @@
 # llm-audit
 
-> Static analysis for LLM-application code. OWASP LLM Top 10 at commit time.
+> Static analysis for **TypeScript and JavaScript** LLM-application code.
+> OWASP LLM Top 10 at commit time. A complement to Semgrep's
+> [`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices)
+> for the TS/JS ecosystem the upstream pack does not cover.
 
-A focused Semgrep rule pack and CLI for catching the security failure modes that
-appear in code shipped by AI coding assistants (and humans) when integrating
-LLM features. Runs locally before commits and in CI.
+A focused Semgrep rule pack and CLI for catching the security failure modes
+that appear in TypeScript and JavaScript code shipped by AI coding assistants
+(and humans) when integrating LLM features. Runs locally before commits and
+in CI.
 
-**Status:** v0 scaffold. Five rules implemented with vulnerable + safe fixtures.
-See [`docs/RULES.md`](docs/RULES.md) for what's shipped and what's planned,
-[`docs/BRIEF.md`](docs/BRIEF.md) for the project pitch, and
-[`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) for the long-form rationale
-behind each rule.
+**Status:** v0 scaffold. Five rules implemented with vulnerable + safe
+fixtures, all green against `npm test`. See [`docs/RULES.md`](docs/RULES.md)
+for what's shipped and what's planned, [`docs/BRIEF.md`](docs/BRIEF.md) for
+the project pitch, [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) for
+the long-form rationale behind each rule, and
+[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) for the
+empirical comparison against `p/ai-best-practices` and other LLM-security
+tooling.
 
 ## Why
 
-Existing SAST tools (Semgrep, Snyk, ESLint security plugins) cover generic web
-vulnerabilities well. None of them ship a curated, maintained ruleset for the
-patterns specific to LLM-integrated applications:
+The strongest existing rule pack — Semgrep's official
+[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices) —
+ships 27 rules: 13 Python, 11 generic configs (MCP, Claude Code settings),
+3 Bash hook rules, and **zero JavaScript or TypeScript rules**. Run it
+against a Next.js + Vercel AI SDK repo and it returns nothing.
+
+The TypeScript / JavaScript LLM-app ecosystem (Vercel AI SDK, OpenAI /
+Anthropic JS SDKs, Next.js route handlers, Server Actions, AI Gateway) is
+genuinely underweighted in the static-analysis tooling that exists today.
+`llm-audit` fills that gap, with each rule mapped explicitly to an
+[OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+category.
+
+Patterns covered:
 
 - User input flowing into an LLM `system` role or prompt template
 - Model output piped into `eval`, `dangerouslySetInnerHTML`, or shell
-- Tool-calling handlers that execute model-chosen tools without an allowlist
-- Retrieval contexts that mix untrusted documents with system instructions
-- Server Actions / route handlers that forward arbitrary strings to a model
+- `JSON.parse` on raw model output without a schema validator
+- Hardcoded LLM API keys in source
 
-This pack targets that gap. Rules map to the [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/).
+The full rule list is in [`docs/RULES.md`](docs/RULES.md).
 
 ## Install
 
