@@ -1,0 +1,88 @@
+rules:
+  - id: untrusted-input-in-system-prompt
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      Untrusted user input is flowing into the LLM `system` role.
+
+      The `system` role is an authority boundary between developer
+      instructions and user content. Placing user-controlled text there
+      collapses the boundary and is an OWASP LLM01 (Prompt Injection)
+      sink, even when the input "looks like instructions."
+
+      Fix:
+        - Keep the system prompt static and authored in code.
+        - Place untrusted input only in the `user` role.
+        - Validate input shape with a schema (zod, valibot) at the
+          request boundary before forwarding to the model.
+        - Consider output filtering or a structured-output schema on
+          the model response.
+    metadata:
+      owasp-llm: LLM01
+      category: prompt-injection
+      cwe:
+        - "CWE-77"
+        - "CWE-94"
+      references:
+        - https://owasp.org/www-project-top-10-for-large-language-model-applications/
+        - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+    pattern-either:
+      # Anthropic SDK: `system` field directly assigned from user input
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $CLIENT.messages.create({..., system: $REQ.body.$F, ...})
+              - pattern: |
+                  $CLIENT.messages.create({..., system: $REQ.query.$F, ...})
+              - pattern: |
+                  $CLIENT.messages.create({..., system: $REQ.params.$F, ...})
+              - pattern: |
+                  $CLIENT.messages.create({..., system: `...${$REQ.body.$F}...`, ...})
+              - pattern: |
+                  $CLIENT.messages.create({..., system: `...${$REQ.query.$F}...`, ...})
+      # AI SDK (`ai` package): generateText / streamText with user input as system
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  generateText({..., system: $REQ.body.$F, ...})
+              - pattern: |
+                  generateText({..., system: $REQ.query.$F, ...})
+              - pattern: |
+                  generateText({..., system: `...${$REQ.body.$F}...`, ...})
+              - pattern: |
+                  streamText({..., system: $REQ.body.$F, ...})
+              - pattern: |
+                  streamText({..., system: $REQ.query.$F, ...})
+              - pattern: |
+                  streamText({..., system: `...${$REQ.body.$F}...`, ...})
+              - pattern: |
+                  generateObject({..., system: $REQ.body.$F, ...})
+              - pattern: |
+                  streamObject({..., system: $REQ.body.$F, ...})
+      # OpenAI SDK: messages array with role: "system" carrying user input
+      - patterns:
+          - pattern-either:
+              - pattern: |
+                  $CLIENT.chat.completions.create({
+                    ...,
+                    messages: [..., { role: "system", content: $REQ.body.$F }, ...],
+                    ...
+                  })
+              - pattern: |
+                  $CLIENT.chat.completions.create({
+                    ...,
+                    messages: [..., { role: "system", content: `...${$REQ.body.$F}...` }, ...],
+                    ...
+                  })
+              - pattern: |
+                  $CLIENT.responses.create({
+                    ...,
+                    instructions: $REQ.body.$F,
+                    ...
+                  })
+              - pattern: |
+                  $CLIENT.responses.create({
+                    ...,
+                    instructions: `...${$REQ.body.$F}...`,
+                    ...
+                  })

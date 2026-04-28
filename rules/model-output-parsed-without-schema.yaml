@@ -1,0 +1,40 @@
+rules:
+  - id: model-output-parsed-without-schema
+    languages: [javascript, typescript]
+    severity: WARNING
+    mode: taint
+    message: |
+      Model output is being parsed with `JSON.parse` and used without
+      schema validation. The model can return malformed JSON,
+      unexpected fields, or attacker-steered content (LLM02 Insecure
+      Output Handling). Parsing succeeds, downstream code trusts the
+      shape, and security-relevant fields can be silently injected.
+
+      Fix:
+        - Use `generateObject` (AI SDK) or `responseFormat: json_schema`
+          (OpenAI) so the model is constrained and parsing failure is
+          structured.
+        - Run output through a schema validator (zod, valibot) before
+          property access.
+        - Default-deny on unknown fields.
+    metadata:
+      owasp-llm: LLM02
+      category: insecure-output-handling
+      cwe:
+        - "CWE-20"
+      references:
+        - https://genai.owasp.org/llmrisk/llm02-insecure-output-handling/
+    pattern-sources:
+      - pattern-either:
+          - pattern: (await $C.chat.completions.create(...)).choices[0].message.content
+          - pattern: (await $C.chat.completions.create(...)).choices[$I].message.content
+          - pattern: (await $C.responses.create(...)).output_text
+          - pattern: (await $C.messages.create(...)).content[0].text
+          - pattern: (await $C.messages.create(...)).content[$I].text
+          - pattern: (await generateText(...)).text
+    pattern-sinks:
+      - pattern: JSON.parse($X)
+    pattern-sanitizers:
+      - pattern: $SCHEMA.parse(...)
+      - pattern: $SCHEMA.safeParse(...)
+      - pattern: $SCHEMA.parseAsync(...)

@@ -1,0 +1,43 @@
+rules:
+  - id: untrusted-input-concatenated-into-prompt-template
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      User-controlled input is concatenated into a prompt template
+      with no structural separator and no role boundary.
+
+      This is the textbook prompt-injection shape from the OWASP LLM
+      Top 10 (LLM01). When instructions and user content share the
+      same string, the user can claim authority by writing things
+      like "ignore previous instructions" with no delimiter to
+      stop them.
+
+      Fix:
+        - Use the `messages` API and place user input only in the
+          `user` role, with a static `system` prompt.
+        - If you must build a single string, wrap user input in a
+          delimiter the user cannot forge (e.g. a random nonce tag)
+          and tell the system prompt how to interpret it.
+        - Validate input length and shape with a schema (zod) at
+          the request boundary.
+    metadata:
+      owasp-llm: LLM01
+      category: prompt-injection
+      cwe:
+        - "CWE-77"
+      references:
+        - https://owasp.org/www-project-top-10-for-large-language-model-applications/
+        - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+    pattern-either:
+      - pattern: |
+          generateText({..., prompt: `...${$REQ.body.$F}...`, ...})
+      - pattern: |
+          generateText({..., prompt: `...${$REQ.query.$F}...`, ...})
+      - pattern: |
+          streamText({..., prompt: `...${$REQ.body.$F}...`, ...})
+      - pattern: |
+          streamText({..., prompt: `...${$REQ.query.$F}...`, ...})
+      - pattern: |
+          generateObject({..., prompt: `...${$REQ.body.$F}...`, ...})
+      - pattern: |
+          streamObject({..., prompt: `...${$REQ.body.$F}...`, ...})

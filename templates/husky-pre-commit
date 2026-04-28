@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Installed by `npx llm-audit init`. Runs the rule pack on staged files only,
+# so it stays fast on large repos.
+
+# Collect staged JS/TS files. If none, exit clean.
+staged=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(js|jsx|ts|tsx|mjs|cjs)$' || true)
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+# shellcheck disable=SC2086
+npx --no-install llm-audit scan $staged

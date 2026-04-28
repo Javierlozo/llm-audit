@@ -1,0 +1,21 @@
+name: llm-audit
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: install semgrep
+        run: pipx install semgrep
+      - name: install deps
+        run: npm ci
+      - name: run llm-audit
+        run: npx llm-audit scan

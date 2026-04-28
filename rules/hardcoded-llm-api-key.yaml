@@ -1,0 +1,36 @@
+rules:
+  - id: hardcoded-llm-api-key
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      An LLM provider API key appears to be hardcoded in source.
+
+      Inline keys leak via git history, client bundles, logs, error
+      messages, and screenshots. Even after rotation, a leaked key
+      is a real-money incident.
+
+      Fix:
+        - Read keys from environment variables, validated at startup
+          with a schema (e.g. zod). Default-deny on missing keys.
+        - For platforms that support it (Vercel AI Gateway, AWS
+          Bedrock), use OIDC / workload identity instead of static
+          keys.
+        - Run `gitleaks` or `trufflehog` in CI as a backstop, since
+          this rule only catches the inline-constructor shape.
+    metadata:
+      owasp-llm: LLM06
+      category: ai-code-smell
+      cwe:
+        - "CWE-798"
+      references:
+        - https://owasp.org/www-project-top-10-for-large-language-model-applications/
+    pattern-either:
+      - pattern: |
+          new OpenAI({..., apiKey: "...", ...})
+      - pattern: |
+          new Anthropic({..., apiKey: "...", ...})
+      - pattern: |
+          createOpenAI({..., apiKey: "...", ...})
+      - pattern: |
+          createAnthropic({..., apiKey: "...", ...})
+      - pattern-regex: 'apiKey\s*:\s*["''](sk-(proj-)?[A-Za-z0-9_-]{20,}|sk-ant-[A-Za-z0-9_-]{20,})["'']'

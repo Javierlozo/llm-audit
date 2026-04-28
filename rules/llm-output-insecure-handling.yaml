@@ -1,0 +1,57 @@
+rules:
+  - id: llm-output-insecure-handling
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      LLM model output is flowing into a dangerous sink (eval / new
+      Function / child_process / dangerouslySetInnerHTML / innerHTML).
+
+      Model output is untrusted by definition: an attacker upstream in
+      the prompt can steer it. Treating it as code, shell, or raw HTML
+      is OWASP LLM02 (Insecure Output Handling) and a direct path to
+      RCE / XSS / command injection.
+
+      Fix:
+        - Validate model output against a schema (e.g. zod) before use.
+        - Escape or sanitize before rendering as HTML / markdown.
+        - Never pass model output to eval, Function, or a shell sink.
+        - For tool-calling, use a fixed allowlist of tool names and
+          validate arguments with a schema.
+    metadata:
+      owasp-llm: LLM02
+      category: insecure-output-handling
+      cwe:
+        - "CWE-79"
+        - "CWE-94"
+        - "CWE-78"
+      references:
+        - https://owasp.org/www-project-top-10-for-large-language-model-applications/
+        - https://genai.owasp.org/llmrisk/llm02-insecure-output-handling/
+    mode: taint
+    pattern-sources:
+      - pattern-either:
+          # OpenAI chat completions
+          - pattern: (await $C.chat.completions.create(...)).choices[0].message.content
+          - pattern: (await $C.chat.completions.create(...)).choices[$I].message.content
+          # OpenAI Responses API
+          - pattern: (await $C.responses.create(...)).output_text
+          # Anthropic messages
+          - pattern: (await $C.messages.create(...)).content[0].text
+          - pattern: (await $C.messages.create(...)).content[$I].text
+          # AI SDK (Vercel `ai` package)
+          - pattern: (await generateText(...)).text
+          - pattern: (await generateObject(...)).object
+    pattern-sinks:
+      - pattern-either:
+          - pattern: eval(...)
+          - pattern: new Function(...)
+          - pattern: Function(...)
+          - pattern: $CHILD.exec(...)
+          - pattern: $CHILD.execSync(...)
+          - pattern: $CHILD.spawn(...)
+          - pattern: $CHILD.spawnSync(...)
+          - pattern: $EL.innerHTML = $X
+          - pattern: |
+              <$TAG dangerouslySetInnerHTML={{ __html: $X }} />
+          - pattern: |
+              <$TAG dangerouslySetInnerHTML={{ __html: $X }} ...></$TAG>
