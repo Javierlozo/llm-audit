@@ -150,17 +150,25 @@ npm i llm-audit@latest
 
 ## Adopt in your project
 
-`llm-audit init` drops a husky pre-commit hook and a GitHub Action into
-your repo. The hook only runs once husky is installed and initialized:
+`llm-audit init` writes two things: a husky pre-commit hook (local, runs
+on every commit) and a GitHub Action workflow (CI, runs on PRs and
+pushes). Before writing the local hook, `init` asks for confirmation —
+press Enter to accept the default, type `n` to skip the hook and keep
+just the GitHub Action.
 
 ```bash
-npx llm-audit init                     # writes .husky/pre-commit + GH Action
+npx llm-audit init                     # prompts: Install pre-commit hook? [Y/n]
+npx llm-audit init -y                  # skip the prompt, accept default
+npx llm-audit init --skill             # also install the Claude Code skill
 
 # If husky isn't already in this project, finish the setup:
 npm i -D husky
 npm pkg set scripts.prepare='husky'
 npm run prepare
 ```
+
+Non-interactive callers (CI, scripts, piped stdin) skip the prompt and
+accept the default automatically — no hangs.
 
 Don't run `npx husky init` after `llm-audit init`: it conflicts with the
 pre-commit file `llm-audit init` just wrote. The three lines above use
@@ -226,6 +234,10 @@ templates/  Files installed by `llm-audit init` (husky hook, GH Action)
 test/       Vulnerable + safe fixtures per rule
 docs/       BRIEF.md (pitch), RULES.md (rule plan)
 ```
+
+## Author
+
+Built by [Luis Javier Lozoya](https://www.luislozoya.com).
 
 ## License
 

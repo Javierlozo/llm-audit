@@ -18,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
+import { createInterface } from "node:readline";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -335,6 +336,22 @@ function cmdRules() {
   }
 }
 
+// Yes/no prompt with a sensible default. In non-TTY contexts (CI runners,
+// piped stdin) we don't block on input — we honor the default and continue.
+// This keeps `init` scriptable without losing the safety net interactively.
+async function promptYesNo(question, defaultYes = true) {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return defaultYes;
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const suffix = defaultYes ? " [Y/n] " : " [y/N] ";
+  const answer = await new Promise((resolve) => {
+    rl.question(question + suffix, resolve);
+  });
+  rl.close();
+  const trimmed = answer.trim().toLowerCase();
+  if (trimmed === "") return defaultYes;
+  return trimmed === "y" || trimmed === "yes";
+}
+
 function detectHuskyState(cwd) {
   const pkgPath = join(cwd, "package.json");
   let inDeps = false;
@@ -360,12 +377,31 @@ function detectHuskyState(cwd) {
   return { inDeps, hasPrepare, initialized };
 }
 
-function cmdInit(args) {
+async function cmdInit(args) {
   const cwd = process.cwd();
   const force = args.includes("--force");
   const dryRun = args.includes("--dry-run");
+  const yes = args.includes("--yes") || args.includes("-y");
   const installSkill = args.includes("--skill") || args.includes("--skill-only");
   const skillOnly = args.includes("--skill-only");
+
+  // Ask once, at install time, before we write a hook into the user's
+  // local commit flow. Non-interactive callers (CI, scripts) and `--yes`
+  // skip the prompt and accept the default. Declining skips only the
+  // local hook — the GH Action workflow is still written, since that's
+  // project-wide CI code the user reviews in their PR.
+  let installHook = !skillOnly;
+  if (installHook && !yes && !dryRun) {
+    installHook = await promptYesNo(
+      "Install the llm-audit pre-commit hook in this repo?",
+      true
+    );
+    if (!installHook) {
+      console.log(
+        "  skipping pre-commit hook. you can run `npx llm-audit scan` manually anytime."
+      );
+    }
+  }
 
   function writeOrRefuse(srcAbsPath, destPath, exec = false) {
     if (dryRun) {
@@ -391,18 +427,20 @@ function cmdInit(args) {
   }
 
   if (!skillOnly) {
-    // Husky pre-commit
-    const huskyDir = join(cwd, ".husky");
-    if (!existsSync(huskyDir) && !dryRun) {
-      mkdirSync(huskyDir, { recursive: true });
+    // Husky pre-commit (gated on the consent prompt above).
+    if (installHook) {
+      const huskyDir = join(cwd, ".husky");
+      if (!existsSync(huskyDir) && !dryRun) {
+        mkdirSync(huskyDir, { recursive: true });
+      }
+      writeOrRefuse(
+        join(TEMPLATES_DIR, "husky-pre-commit"),
+        join(huskyDir, "pre-commit"),
+        true
+      );
     }
-    writeOrRefuse(
-      join(TEMPLATES_DIR, "husky-pre-commit"),
-      join(huskyDir, "pre-commit"),
-      true
-    );
 
-    // GitHub Action
+    // GitHub Action: project-wide CI, always written.
     const ghDir = join(cwd, ".github", "workflows");
     if (!existsSync(ghDir) && !dryRun) {
       mkdirSync(ghDir, { recursive: true });
@@ -460,6 +498,21 @@ function cmdInit(args) {
     );
     console.log("");
   }
+  if (!installHook) {
+    console.log(
+      "✓ GitHub Action workflow installed at .github/workflows/llm-audit.yml"
+    );
+    console.log(
+      "  no pre-commit hook was written. CI will still run llm-audit on PRs."
+    );
+    console.log("");
+    console.log("other things to verify:");
+    console.log("  - semgrep installed:    `semgrep --version`  (else `brew install semgrep`)");
+    console.log("  - try a clean scan:     `npx llm-audit scan`");
+    console.log("  - see the demo:         `npx llm-audit demo`");
+    return;
+  }
+
   const husky = detectHuskyState(cwd);
 
   if (husky.inDeps && husky.initialized) {
@@ -677,6 +730,7 @@ SCAN FLAGS
 INIT FLAGS
   --force                         Overwrite existing files
   --dry-run                       Preview without writing
+  -y, --yes                       Skip the pre-commit hook prompt (accept the default)
   --skill                         Also install the Claude Code skill (.claude/skills/llm-audit/)
   --skill-only                    Install only the skill, not the hook or workflow
 
@@ -698,7 +752,7 @@ switch (sub) {
     cmdScan(rest);
     break;
   case "init":
-    cmdInit(rest);
+    await cmdInit(rest);
     break;
   case "rules":
     cmdRules();
