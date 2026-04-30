@@ -1,3 +1,5 @@
+// @ts-nocheck — fixture is Semgrep pattern-matcher input, not compiled TS.
+
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { generateText, generateObject } from "ai";

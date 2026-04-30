@@ -7,8 +7,8 @@
 
 ## Context
 
-The portfolio repo (`/Users/luis/Github/React-Portfolio`) is a Next.js 15
-app with three files that call an LLM:
+The portfolio repo (`React-Portfolio`) is a Next.js 15 app with three
+files that call an LLM:
 
 - `src/app/api/chat/route.ts` — streaming chat endpoint
 - `src/app/api/fit-assessment/route.ts` — recruiter fit-assessment endpoint
@@ -22,8 +22,8 @@ LLM pack `p/ai-best-practices` against the same repo returns zero findings
 ## Method
 
 ```sh
-cd /Users/luis/Github/React-Portfolio
-semgrep --config /Users/luis/Github/llm-audit/rules src --metrics=off
+cd ~/path/to/React-Portfolio
+semgrep --config ~/path/to/llm-audit/rules src --metrics=off
 ```
 
 Five rules ran across 70 files. One finding.
@@ -141,7 +141,7 @@ Three behaviors after the fix:
 ## Re-scan after the fix
 
 ```sh
-semgrep --config /Users/luis/Github/llm-audit/rules src --metrics=off
+semgrep --config ~/path/to/llm-audit/rules src --metrics=off
 ```
 
 ```
@@ -166,12 +166,10 @@ refactors could break. The rule rewards the cleaner pattern.
 
 ## Artifacts
 
-- React-Portfolio commit fixing this finding: see `git log` in
-  `/Users/luis/Github/React-Portfolio` for the commit dated 2026-04-28
-  with subject starting `security: validate fit-assessment LLM output`
-- Original snapshot: `/tmp/llm-audit-finding-before.txt` (kept locally,
-  not committed)
-- Re-scan snapshot: `/tmp/llm-audit-finding-after.txt`
+- React-Portfolio commit fixing this finding: `git log` in the
+  React-Portfolio repo for the commit dated 2026-04-28 with subject
+  starting `security: validate fit-assessment LLM output`.
+- Before / after semgrep snapshots are kept locally (not committed).
 
 ## What this proves about `llm-audit`
 

@@ -92,23 +92,6 @@ fixture, and includes a "why an AI assistant tends to write this" note in
   building a SAST engine from scratch, and Semgrep is already trusted in the
   ecosystem.
 
-## Pitch for g/d/n/a
-
-The gdna codebase is mostly React and Next.js. **Every existing OSS LLM-security
-SAST tool today (Semgrep `p/ai-best-practices`, HeadyZhang/agent-audit) is
-Python-only.** Pointing them at gdna's repos returns nothing. `llm-audit` is
-the only OSS option that actually covers the stack gdna ships.
-
-- MIT, no infra to operate, drops into any TS/JS repo with `npm i -D` and `brew install semgrep`
-- Catches a class of bugs AI assistants are actively introducing across teams
-  building LLM features in Next.js / Vercel AI SDK
-- Pre-commit + CI share the same rule pack; same config in both places
-- Could become the internal "before-you-push" standard across all g/d/n/a repos
-  shipping AI features
-- Aligns with shift-left and secure-by-default posture
-- Bonus: every rule maps to an OWASP LLM Top 10 category, which makes the
-  output presentable to clients or auditors without translation
-
 ## Non-goals (v1)
 
 - Reinventing generic SAST — Semgrep `p/owasp-top-ten` already does it
@@ -126,6 +109,7 @@ the only OSS option that actually covers the stack gdna ships.
 
 ## Status
 
-v0 scaffold. Five rules implemented with passing/failing fixtures.
-Repository: `github.com/<your-handle>/llm-audit` (not yet created).
-npm: `llm-audit` (not yet published).
+Shipped. Five rules implemented with passing fixtures. Available on
+npm as [`llm-audit`](https://www.npmjs.com/package/llm-audit) and on
+GitHub at
+[`github.com/Javierlozo/llm-audit`](https://github.com/Javierlozo/llm-audit).

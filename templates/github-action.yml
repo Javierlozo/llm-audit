@@ -22,5 +22,8 @@ jobs:
         run: pipx install semgrep
       - name: install deps
         run: npm ci
+      # `npx` resolves the latest published llm-audit at workflow run time
+      # unless `llm-audit` is in your devDependencies. To pin to a reviewed
+      # version, run `npm i -D llm-audit` or use `npx llm-audit@<version>`.
       - name: run llm-audit
         run: npx llm-audit scan

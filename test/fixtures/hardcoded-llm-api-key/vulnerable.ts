@@ -1,3 +1,15 @@
+// @ts-nocheck — fixture is Semgrep pattern-matcher input, not compiled TS.
+// Imports below resolve to packages this project deliberately does not depend on.
+//
+// llm-audit test fixture. The strings shaped like API keys below are
+// deliberately invalid placeholders (note the repeating AAAA1111... and
+// EEEE5555... patterns) used only to verify that the rule matches.
+// They are not, and have never been, real credentials.
+//
+// pragma: allowlist secret
+// trufflehog:ignore
+// gitleaks:allow
+
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 

@@ -1,3 +1,5 @@
+// @ts-nocheck — fixture is Semgrep pattern-matcher input, not compiled TS.
+
 import { generateText } from "ai";
 import { z } from "zod";
 

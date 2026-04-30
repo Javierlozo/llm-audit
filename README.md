@@ -178,6 +178,26 @@ husky v9's manual setup, which doesn't have that conflict.
 you really mean it. Threat model and rationale in
 [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md).
 
+### Pinning the version in CI
+
+The bundled GitHub Action runs `npx llm-audit scan`, which resolves the
+latest published version from npm at workflow run time unless `llm-audit`
+is in your `devDependencies`. The husky pre-commit hook uses
+`npx --no-install` and won't fetch the package implicitly.
+
+If you want CI to use a reviewed version rather than whatever is current
+on the registry, either add it to your dev dependencies:
+
+```bash
+npm i -D llm-audit
+```
+
+…or pin a version directly in the workflow file:
+
+```yaml
+- run: npx llm-audit@0.0.9 scan
+```
+
 ## Why
 
 The strongest existing rule pack — Semgrep's official

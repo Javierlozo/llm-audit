@@ -1,3 +1,5 @@
+// @ts-nocheck — fixture is Semgrep pattern-matcher input, not compiled TS.
+
 import { generateText, streamText, generateObject } from "ai";
 
 // Instructions wrap user input in a single string with no role boundary.

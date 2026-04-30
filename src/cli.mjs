@@ -94,6 +94,9 @@ async function fetchLatestVersion() {
     });
     if (!r.ok) return null;
     const d = await r.json();
+    // Shallow validation is intentional: the npm registry is already the
+    // trust root for this package's distribution, so a stricter check on
+    // the version string wouldn't change the threat model.
     return typeof d?.version === "string" ? d.version : null;
   } catch {
     return null;

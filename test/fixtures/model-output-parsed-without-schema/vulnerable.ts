@@ -1,3 +1,5 @@
+// @ts-nocheck — fixture is Semgrep pattern-matcher input, not compiled TS.
+
 import OpenAI from "openai";
 import { generateText } from "ai";
 
