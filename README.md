@@ -242,3 +242,10 @@ Built by [Luis Javier Lozoya](https://www.luislozoya.com).
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Trademarks
+
+llm-audit is an independent project and is not affiliated with or endorsed by
+Semgrep, Inc. Semgrep is a trademark of Semgrep, Inc. References to the Semgrep
+CLI and the `p/ai-best-practices` ruleset are nominative: they describe the
+engine this project runs on and the public ruleset this project complements.
