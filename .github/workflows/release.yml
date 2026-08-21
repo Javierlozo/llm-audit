@@ -1,0 +1,48 @@
+# Publish to npm via OIDC trusted publishing.
+#
+# No long-lived npm token lives in this repo or on any laptop. GitHub mints a
+# short-lived OIDC token at run time and npm verifies it against the trusted
+# publisher configured on the package. That also means every release carries
+# provenance, which is the point for a supply-chain security tool.
+#
+# One-time setup on npmjs.com:
+#   Package -> Settings -> Trusted publisher -> GitHub Actions
+#   repository: Javierlozo/llm-audit, workflow: release.yml
+#
+# To cut a release:
+#   npm version <patch|minor|major> && git push --follow-tags
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to SHA per https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v6.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v6.4.0
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Trusted publishing needs a recent npm.
+      - name: use npm with OIDC support
+        run: npm install -g npm@latest
+
+      - name: install semgrep
+        run: pipx install semgrep
+
+      # The rule pack is the product. Never publish a pack whose fixtures fail.
+      - name: run fixture suite
+        run: npm test
+
+      - name: publish
+        run: npm publish
