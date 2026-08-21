@@ -82,7 +82,7 @@ address. For each entry:
 
 1. Read the `message`. It contains a description of the failure mode
    and a `Fix:` section with the canonical remediation.
-2. Apply the canonical fix per the rule. The five rules currently
+2. Apply the canonical fix per the rule. The eight rules currently
    shipped, with their canonical fixes:
 
    | `ruleId` | OWASP | Canonical fix |
@@ -92,6 +92,9 @@ address. For each entry:
    | `llm-output-insecure-handling` | LLM02 | Validate output against a schema (zod). Sanitize before rendering as HTML (`DOMPurify`). Never pass model output to `eval`, `Function`, or a shell sink. |
    | `model-output-parsed-without-schema` | LLM02 | Wrap `JSON.parse(modelOutput)` directly in `Schema.safeParse(...)` or `Schema.parse(...)`. Or use `generateObject` / `responseFormat: json_schema` so the model is constrained at the API. |
    | `hardcoded-llm-api-key` | LLM06 | Read keys from `process.env`, validated at startup with `zod`. Use OIDC / workload identity where the platform supports it. |
+   | `tool-call-dispatch-without-allowlist` | LLM08 | Switch on a closed set of literal tool names, or check membership in an explicit allowlist before dispatch. Validate tool arguments with a schema before the handler runs. |
+   | `secrets-in-prompt-context` | LLM06 | Keep credentials in the SDK client config or request headers, never in prompt text. Reference resources by opaque id and resolve them server-side after the model responds. |
+   | `request-body-to-llm-without-schema` | LLM01 | Parse the request body with `zod` / `valibot` before use, with an explicit max length on free-text fields. Pass validated values into the `user` role only. Rate limit the endpoint. |
 
 3. Re-run the scan against the same paths until the `findings` array
    is empty.

@@ -116,6 +116,11 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** parse the body with an explicit schema and a max length on free-text
   fields, pass validated values into the `user` role only, and rate limit the
   endpoint.
+- **Known limitation:** the sanitizer list matches on *name*, so a function
+  called `sanitizeInput()` that returns its argument unchanged will silence the
+  rule. This is the deliberate trade: name-based sanitizers are what keep the
+  rule off correct code, and Semgrep cannot prove a helper actually validates.
+  Treat a passing scan as "no obvious hole," not as a proof.
 - **Not flagged:** hand-rolled validation counts. A named `sanitize*` /
   `validate*` helper, an explicit length clamp (`slice(0, MAX)`), or a
   per-element `.map()` callback that type-checks and clamps all sanitize the
