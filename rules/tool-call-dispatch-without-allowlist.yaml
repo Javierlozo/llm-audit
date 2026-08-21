@@ -1,0 +1,67 @@
+rules:
+  - id: tool-call-dispatch-without-allowlist
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      A tool call from the model is dispatched by dynamic lookup on the
+      model-supplied tool name, with no allowlist between the model and
+      the handler table.
+
+      The tool name is model output, and model output is attacker
+      influenced whenever any untrusted text reaches the context. Indexing
+      a handler map with it makes the model the router: prompt injection
+      that changes which tool runs becomes remote code execution against
+      whatever those handlers do (file writes, shell, payments, email).
+      This is OWASP LLM08 (Excessive Agency).
+
+      Fix:
+        - Switch on a closed set of literal tool names, or check
+          membership in an explicit allowlist before dispatch.
+        - Validate the tool arguments with a schema (zod, valibot)
+          before the handler runs, not inside it.
+        - Keep destructive tools behind a confirmation step or a
+          separate, more restricted credential.
+    metadata:
+      owasp-llm: LLM08
+      category: excessive-agency
+      cwe:
+        - "CWE-470"
+        - "CWE-77"
+      references:
+        - https://genai.owasp.org/llmrisk/llm08-excessive-agency/
+    patterns:
+      - pattern-either:
+          # handlers[toolCall.toolName](args) and the provider variants
+          - pattern: $MAP[$CALL.toolName](...)
+          - pattern: $MAP[$CALL.name](...)
+          - pattern: $MAP[$CALL.function.name](...)
+          - pattern: $MAP[$CALL.tool_name](...)
+          # resolved to a variable first, then invoked
+          - pattern: |
+              $FN = $MAP[$CALL.toolName];
+              ...
+              $FN(...)
+          - pattern: |
+              $FN = $MAP[$CALL.function.name];
+              ...
+              $FN(...)
+      # An explicit membership check anywhere in the enclosing function is
+      # the allowlist we are asking for.
+      - pattern-not-inside: |
+          function $F(...) {
+            ...
+            if (<... $SET.has(...) ...>) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          function $F(...) {
+            ...
+            if (<... $SET.includes(...) ...>) { ... }
+            ...
+          }
+      - pattern-not-inside: |
+          function $F(...) {
+            ...
+            if (<... $SET.hasOwnProperty(...) ...>) { ... }
+            ...
+          }

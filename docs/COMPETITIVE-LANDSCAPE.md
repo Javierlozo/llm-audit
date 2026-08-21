@@ -62,7 +62,7 @@ PASS untrusted-input-concatenated-into-prompt-template  vulnerable=3/3  safe=0
 PASS untrusted-input-in-system-prompt                   vulnerable=5/5  safe=0
 ```
 
-21 vulnerability matches caught across 5 rules, 0 false positives on the safe
+30 vulnerability matches caught across 8 rules, 0 false positives on the safe
 fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 
 ---

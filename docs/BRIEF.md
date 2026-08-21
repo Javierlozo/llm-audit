@@ -63,12 +63,12 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 3. **LLM02 — Insecure Output Handling: model output to dangerous sink** (v0 ✅)
 4. **LLM02 — `JSON.parse` on raw model output without schema validation** (v0 ✅)
 5. **LLM06 — Hardcoded LLM API keys in source** (v0 ✅)
-6. **LLM07 — System prompt leakage: system text inlined in client-visible code**
-7. **LLM08 — Excessive Agency: tool-calling handler without allowlist on tool name or args**
-8. **LLM01 — Retrieval context: untrusted document text mixed into a `system` role**
-9. **LLM06 — Sensitive context (env, secrets, user PII) included in prompt**
-10. **LLM09 — Overreliance: model output rendered as code or markdown without sanitization**
-11. **AI-CODE-SMELL — Route handler that forwards arbitrary string to LLM without zod/valibot**
+6. **LLM08 — Excessive Agency: tool-calling dispatch without an allowlist** (v0.1 ✅)
+7. **LLM06 — Sensitive context (env, secrets) interpolated into prompt text** (v0.1 ✅)
+8. **LLM01 — Route handler forwards request body to a model without a schema** (v0.1 ✅)
+9. **LLM07 — System prompt leakage: system text inlined in client-visible code**
+10. **LLM01 — Retrieval context: untrusted document text mixed into a `system` role**
+11. **LLM09 — Overreliance: model output rendered as code or markdown without sanitization**
 12. **AI-CODE-SMELL — Streaming response without backpressure / abort handling**
 
 ## Differentiation
@@ -77,7 +77,7 @@ fixture, and includes a "why an AI assistant tends to write this" note in
   `p/ai-best-practices` (the strongest existing alternative) ships 27 rules
   across Python, generic configs, and Bash, with **zero JS/TS coverage**. Run
   it against the `llm-audit` fixtures and it produces 0 findings on the same
-  files where `llm-audit` flags 21 violations across 5 rules. This is the
+  files where `llm-audit` flags 30 violations across 8 rules. This is the
   empirical gap: TypeScript Vercel AI SDK / OpenAI / Anthropic JS / Next.js
   Server Action shapes are simply not covered upstream.
 - **Explicit OWASP LLM Top 10 mapping** in every rule's `metadata.owasp-llm`
@@ -109,7 +109,7 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 ## Status
 
-Shipped. Five rules implemented with passing fixtures. Available on
+Shipped. Eight rules implemented with passing fixtures. Available on
 npm as [`llm-audit`](https://www.npmjs.com/package/llm-audit) and on
 GitHub at
 [`github.com/Javierlozo/llm-audit`](https://github.com/Javierlozo/llm-audit).

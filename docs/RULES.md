@@ -75,6 +75,54 @@ these shapes regularly, and naming the failure mode is part of the value.
   prefer OIDC / workload identity where supported. Run `gitleaks` in CI as
   a backstop.
 
+## v0.1 (shipped)
+
+### `tool-call-dispatch-without-allowlist`
+
+- **OWASP:** LLM08 — Excessive Agency
+- **CWE:** CWE-470, CWE-77
+- **Catches:** a model-supplied tool name used as a dynamic index into a handler
+  map (`handlers[call.toolName](args)`, `handlers[call.function.name](...)`,
+  and the resolve-then-invoke variant), with no membership check in the
+  enclosing function.
+- **Why AI writes this:** a lookup table is the shortest correct-looking way to
+  wire up tool calling, and every provider example shows the tool name coming
+  back off the response object. The dispatch reads as plumbing rather than as a
+  trust boundary.
+- **Fix:** switch on literal tool names, or check an explicit allowlist before
+  dispatch, and validate the arguments with a schema before the handler runs.
+
+### `secrets-in-prompt-context`
+
+- **OWASP:** LLM06 — Sensitive Information Disclosure
+- **CWE:** CWE-200, CWE-532
+- **Catches:** `process.env.*` interpolated into a `system`, `prompt`, or
+  `instructions` field, or into the content of a message entry.
+- **Why AI writes this:** when the task is "let the model use our API," inlining
+  the key into the instructions is the most direct reading of the request. The
+  code works, so nothing signals that the context is readable output.
+- **Fix:** keep credentials in the client config or request headers, reference
+  resources by opaque id, and resolve them server-side after the model responds.
+
+### `request-body-to-llm-without-schema`
+
+- **OWASP:** LLM01 — Prompt Injection
+- **CWE:** CWE-20, CWE-77
+- **Catches:** taint from `await request.json()` / `.text()` / `.formData()`
+  into an LLM call with no zod / valibot parse on the path.
+- **Why AI writes this:** route-handler examples destructure the body and use it
+  immediately. Validation is a separate concern that the prompt for the feature
+  never mentions, so it never appears.
+- **Fix:** parse the body with an explicit schema and a max length on free-text
+  fields, pass validated values into the `user` role only, and rate limit the
+  endpoint.
+- **Not flagged:** hand-rolled validation counts. A named `sanitize*` /
+  `validate*` helper, an explicit length clamp (`slice(0, MAX)`), or a
+  per-element `.map()` callback that type-checks and clamps all sanitize the
+  taint. This came directly out of dogfooding: the first draft flagged two
+  endpoints that validate correctly without a schema library, and a rule that
+  fires on correct code is a rule people turn off.
+
 ## v1 plan (not yet shipped)
 
 ### `system-prompt-leakage-in-client-bundle`
@@ -83,25 +131,6 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Catches:** static system prompts referenced in client-side files (e.g.
   imported into a `'use client'` module, or an Edge / Routing Middleware that
   ships text to the browser).
-
-### `tool-call-without-allowlist`
-
-- **OWASP:** LLM08 — Excessive Agency
-- **Catches:** a tool-calling handler that dispatches on `toolCall.name` without
-  matching against a known list, or that forwards `toolCall.arguments` to a
-  privileged sink without validation.
-
-### `model-output-parsed-without-schema`
-
-- **OWASP:** LLM02
-- **Catches:** `JSON.parse(modelResponse)` followed by property access, with no
-  schema validation in between.
-
-### `sensitive-context-in-prompt`
-
-- **OWASP:** LLM06 — Sensitive Information Disclosure
-- **Catches:** environment variables, secrets, or PII fields being inlined into
-  prompt text or system instructions.
 
 ### `model-output-rendered-as-markdown-without-sanitization`
 
@@ -114,19 +143,6 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **OWASP:** LLM01
 - **Catches:** RAG pipelines that concatenate retrieved document text into the
   `system` role rather than a separate `user` or tagged context block.
-
-### `hardcoded-llm-api-key`
-
-- **Category:** AI code smell
-- **Catches:** `sk-...` / `sk-ant-...` / Anthropic / OpenAI key shapes adjacent
-  to imports of `openai`, `@anthropic-ai/sdk`, or `ai`.
-
-### `llm-route-without-input-validation`
-
-- **Category:** AI code smell
-- **Catches:** a Next.js route handler or Server Action that takes a string
-  from `request.json()` and forwards it to an LLM call without zod / valibot
-  on the path.
 
 ### `streaming-response-without-abort-handling`
 

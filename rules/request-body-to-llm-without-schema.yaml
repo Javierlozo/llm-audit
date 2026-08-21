@@ -1,0 +1,79 @@
+rules:
+  - id: request-body-to-llm-without-schema
+    languages: [javascript, typescript]
+    severity: WARNING
+    mode: taint
+    message: |
+      A request body is forwarded to a model with no schema validation at
+      the boundary.
+
+      `await request.json()` returns whatever the caller sent: any shape,
+      any length, any content. Passing it straight into a prompt gives an
+      unauthenticated caller direct control of the context, and with no
+      length or type bound it is also an unmetered spend path against your
+      provider account. This is the most common shape in AI route handlers
+      and Server Actions, and OWASP LLM01 (Prompt Injection) in practice.
+
+      Fix:
+        - Parse the body with zod or valibot before use, with an explicit
+          max length on free-text fields.
+        - Pass validated values into the `user` role only, never `system`.
+        - Rate limit the endpoint. Prompt endpoints cost money per call.
+    metadata:
+      owasp-llm: LLM01
+      category: prompt-injection
+      cwe:
+        - "CWE-20"
+        - "CWE-77"
+      references:
+        - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+    pattern-sources:
+      - pattern-either:
+          - pattern: await $REQ.json()
+          - pattern: await $REQ.formData()
+          - pattern: await $REQ.text()
+    pattern-sanitizers:
+      # Schema validators
+      - pattern-either:
+          - pattern: $SCHEMA.parse(...)
+          - pattern: $SCHEMA.safeParse(...)
+          - pattern: $SCHEMA.parseAsync(...)
+          - pattern: $SCHEMA.validate(...)
+          - pattern: $SCHEMA.assert(...)
+      # Hand-rolled validation is still validation. A named sanitize /
+      # validate / clean / normalize helper counts, as does an explicit
+      # length clamp, which is what most people write before reaching for
+      # a schema library.
+      - patterns:
+          - pattern: $F(...)
+          - metavariable-regex:
+              metavariable: $F
+              regex: (?i)^(sanitize|validate|clean|normalize|escape)\w*$
+      - patterns:
+          - pattern: $X.$F(...)
+          - metavariable-regex:
+              metavariable: $F
+              regex: (?i)^(sanitize|validate|clean|normalize|escape)\w*$
+      - pattern: $X.slice($A, $B)
+      - pattern: $X.substring($A, $B)
+      # Array-of-messages shapes validate per element inside a .map()
+      # callback. Taint does not follow into the callback, so recognise the
+      # callback itself as the sanitizer when it clamps or type-checks.
+      - patterns:
+          - pattern: $ARR.map($CB)
+          - metavariable-pattern:
+              metavariable: $CB
+              patterns:
+                - pattern-either:
+                    - pattern: <... $X.slice($A, $B) ...>
+                    - pattern: <... $X.substring($A, $B) ...>
+                    - pattern: <... typeof $X === "string" ...>
+    pattern-sinks:
+      - pattern-either:
+          - pattern: generateText(...)
+          - pattern: streamText(...)
+          - pattern: generateObject(...)
+          - pattern: streamObject(...)
+          - pattern: $C.chat.completions.create(...)
+          - pattern: $C.responses.create(...)
+          - pattern: $C.messages.create(...)
