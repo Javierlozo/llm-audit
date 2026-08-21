@@ -1,0 +1,49 @@
+rules:
+  - id: system-prompt-leakage-in-client-bundle
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      System prompt text is defined in a client component, which ships it
+      to the browser.
+
+      Anything in a `'use client'` module ends up in the JavaScript bundle,
+      readable in devtools by anyone who opens the page. A system prompt is
+      not a secret in the cryptographic sense, but it is usually the only
+      thing enforcing your product's guardrails, and publishing it hands an
+      attacker the exact text to write around. Prompts that name internal
+      tools, data sources or policy are worse. This is OWASP LLM07 (System
+      Prompt Leakage).
+
+      Fix:
+        - Keep the system prompt in a server module: a route handler, a
+          Server Action, or a file marked `import "server-only"`.
+        - Have the client send only the user's message and let the server
+          assemble the full request.
+        - Never put prompt text in a `NEXT_PUBLIC_` variable. That prefix
+          means "inline this into the browser bundle."
+    metadata:
+      owasp-llm: LLM07
+      category: system-prompt-leakage
+      cwe:
+        - "CWE-200"
+        - "CWE-540"
+      references:
+        - https://genai.owasp.org/llmrisk/llm07-system-prompt-leakage/
+    pattern-either:
+      # Prompt-shaped constant declared in a client module
+      - patterns:
+          - pattern-inside: |
+              "use client";
+              ...
+          - pattern: const $NAME = "...";
+          - metavariable-regex:
+              metavariable: $NAME
+              regex: (?i).*(system|prompt|instruction|persona|guardrail).*
+      # Prompt field assigned a literal inside a client module
+      - patterns:
+          - pattern-inside: |
+              "use client";
+              ...
+          - pattern-either:
+              - pattern: '{..., system: "...", ...}'
+              - pattern: '{..., instructions: "...", ...}'

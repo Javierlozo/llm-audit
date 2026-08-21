@@ -1,0 +1,53 @@
+rules:
+  - id: model-output-rendered-as-markdown-without-sanitization
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      Model output is rendered through a markdown pipeline with raw HTML
+      enabled and no sanitizer.
+
+      Markdown renderers escape HTML by default for a reason. Turning that
+      off (`rehype-raw`, `allowDangerousHtml`, `marked` with
+      `sanitize: false`, `html: true`) and then feeding the renderer model
+      output means any `<img onerror>`, `<script>`, or `<a href="javascript:">`
+      the model can be steered into emitting becomes live DOM in your page.
+      A prompt-injected document, tool result, or retrieved page is enough
+      to reach this. OWASP LLM02 (Insecure Output Handling), and the
+      cross-site scripting is real XSS, not a theoretical one.
+
+      Fix:
+        - Leave HTML disabled. Markdown alone renders fine without it.
+        - If you genuinely need raw HTML, put `rehype-sanitize` after
+          `rehype-raw` in the plugin chain, or run the output through
+          DOMPurify before rendering.
+        - Restrict the allowed schema to the tags and attributes you
+          actually use. Default-deny beats blocklisting.
+    metadata:
+      owasp-llm: LLM02
+      category: insecure-output-handling
+      cwe:
+        - "CWE-79"
+        - "CWE-80"
+      references:
+        - https://genai.owasp.org/llmrisk/llm02-insecure-output-handling/
+        - https://github.com/rehypejs/rehype-sanitize
+    pattern-either:
+      # react-markdown with rehype-raw and no sanitizer in the chain
+      - patterns:
+          - pattern-either:
+              - pattern: <ReactMarkdown rehypePlugins={[..., rehypeRaw, ...]}>{...}</ReactMarkdown>
+              - pattern: <Markdown rehypePlugins={[..., rehypeRaw, ...]}>{...}</Markdown>
+          - pattern-not: <ReactMarkdown rehypePlugins={[..., rehypeSanitize, ...]}>{...}</ReactMarkdown>
+          - pattern-not: <Markdown rehypePlugins={[..., rehypeSanitize, ...]}>{...}</Markdown>
+      # unified / remark pipelines that opt into raw HTML
+      - patterns:
+          - pattern-either:
+              - pattern: $P.use(rehypeRaw, ...)
+              - pattern: '$P.use(remarkRehype, {..., allowDangerousHtml: true, ...})'
+              - pattern: '$P.use(rehypeStringify, {..., allowDangerousHtml: true, ...})'
+          - pattern-not-inside: |
+              $Q.use(rehypeSanitize, ...)
+      # marked / markdown-it configured to emit raw HTML
+      - pattern: 'marked.setOptions({..., sanitize: false, ...})'
+      - pattern: 'new $MD({..., html: true, ...})'
+      - pattern: 'markdownIt({..., html: true, ...})'

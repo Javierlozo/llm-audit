@@ -1,0 +1,45 @@
+rules:
+  - id: untrusted-retrieval-context-in-system-role
+    languages: [javascript, typescript]
+    severity: ERROR
+    message: |
+      Retrieved document text is being concatenated into the `system` role.
+
+      Retrieval output is untrusted input. It comes from indexed documents,
+      scraped pages, uploaded files or database rows, any of which an
+      attacker may have authored. Placing it in the `system` role gives that
+      text the same authority as your own instructions, which is the whole
+      point of indirect prompt injection: a poisoned document that says
+      "ignore previous instructions" now outranks your prompt. This is
+      OWASP LLM01 (Prompt Injection) by way of the retrieval pipeline.
+
+      Fix:
+        - Keep `system` static and author it in code.
+        - Put retrieved text in a `user` message, or a clearly delimited
+          context block, and tell the model in the static system prompt to
+          treat it as data rather than instructions.
+        - Prefer structured output so a hijacked context cannot change the
+          shape of the response.
+    metadata:
+      owasp-llm: LLM01
+      category: prompt-injection
+      cwe:
+        - "CWE-77"
+        - "CWE-94"
+      references:
+        - https://genai.owasp.org/llmrisk/llm01-prompt-injection/
+    pattern-either:
+      # Retrieval-shaped variable interpolated into a system field
+      - patterns:
+          - pattern-either:
+              - pattern: '{..., system: `...${$DOCS}...`, ...}'
+              - pattern: '{..., instructions: `...${$DOCS}...`, ...}'
+              - pattern: '{..., role: "system", content: `...${$DOCS}...`, ...}'
+          - metavariable-regex:
+              metavariable: $DOCS
+              regex: (?i).*(doc|chunk|context|retriev|passage|excerpt|snippet|embedding|match|result|knowledge|corpus).*
+      # Joined result set dropped straight into system text
+      - pattern-either:
+          - pattern: '{..., system: `...${$X.map(...).join(...)}...`, ...}'
+          - pattern: '{..., role: "system", content: `...${$X.map(...).join(...)}...`, ...}'
+          - pattern: '{..., system: `...${$X.join(...)}...`, ...}'

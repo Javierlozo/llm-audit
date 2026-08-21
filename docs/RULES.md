@@ -128,32 +128,61 @@ these shapes regularly, and naming the failure mode is part of the value.
   endpoints that validate correctly without a schema library, and a rule that
   fires on correct code is a rule people turn off.
 
-## v1 plan (not yet shipped)
+## v1 (shipped)
 
 ### `system-prompt-leakage-in-client-bundle`
 
 - **OWASP:** LLM07 — System Prompt Leakage
-- **Catches:** static system prompts referenced in client-side files (e.g.
-  imported into a `'use client'` module, or an Edge / Routing Middleware that
-  ships text to the browser).
-
-### `model-output-rendered-as-markdown-without-sanitization`
-
-- **OWASP:** LLM09 — Overreliance
-- **Catches:** model output passed to a markdown renderer with HTML enabled and
-  no sanitizer.
+- **CWE:** CWE-200, CWE-540
+- **Catches:** prompt-shaped constants (`SYSTEM_PROMPT`, `*instruction*`,
+  `*persona*`, `*guardrail*`) or literal `system` / `instructions` fields
+  declared inside a `'use client'` module, which ships them to the browser.
+- **Why AI writes this:** the chat UI is a client component, so the assistant
+  puts the prompt next to the component that uses it. Nothing in the code
+  signals that the module boundary is also a publication boundary.
+- **Fix:** move the prompt to a route handler, Server Action, or a module
+  marked `import "server-only"`, and have the client send only the user text.
+- **Note:** env vars in prompts, `NEXT_PUBLIC_` included, are covered by
+  `secrets-in-prompt-context` instead, so one line produces one finding.
 
 ### `untrusted-retrieval-context-in-system-role`
 
-- **OWASP:** LLM01
-- **Catches:** RAG pipelines that concatenate retrieved document text into the
-  `system` role rather than a separate `user` or tagged context block.
+- **OWASP:** LLM01 — Prompt Injection
+- **CWE:** CWE-77, CWE-94
+- **Catches:** retrieval-shaped variables (`docs`, `chunks`, `context`,
+  `passages`, `matches`) or a joined result set interpolated into the `system`
+  role.
+- **Why AI writes this:** "give the model the documents" reads as context, and
+  context reads as system. The retrieved text is treated as trusted because it
+  came from your own index, but an attacker may have authored what you indexed.
+- **Fix:** keep `system` static, put retrieved text in a delimited `user`
+  block, and instruct the model to treat it as data rather than instructions.
+
+### `model-output-rendered-as-markdown-without-sanitization`
+
+- **OWASP:** LLM02 — Insecure Output Handling
+- **CWE:** CWE-79, CWE-80
+- **Catches:** `rehype-raw` without `rehype-sanitize`, `allowDangerousHtml`,
+  `marked` with `sanitize: false`, and `markdown-it` with `html: true`.
+- **Why AI writes this:** the model emits HTML in its markdown, it renders as
+  escaped text, and enabling raw HTML is the first fix that makes the output
+  "look right." The escaping was the control.
+- **Fix:** leave HTML disabled, or put `rehype-sanitize` after `rehype-raw`
+  and restrict the schema to the tags you actually use.
 
 ### `streaming-response-without-abort-handling`
 
-- **Category:** AI code smell
-- **Catches:** `streamText` / `streamObject` returned from a route handler
-  without wiring a request abort signal to the underlying call.
+- **OWASP:** LLM10 — Unbounded Consumption
+- **CWE:** CWE-400, CWE-770
+- **Catches:** `streamText` / `streamObject` / a streaming SDK call inside a
+  request handler with no `abortSignal` or `signal` forwarded.
+- **Why AI writes this:** the happy path works and the leak is invisible in
+  development, where nobody disconnects mid-stream. It shows up as a provider
+  bill.
+- **Fix:** pass `abortSignal: request.signal` (AI SDK) or
+  `{ signal: request.signal }` (OpenAI, Anthropic), and rate limit the endpoint.
+- **Found in the wild:** this rule caught a live bug in the author's own
+  portfolio chat endpoint on its first run.
 
 ## Authoring conventions
 

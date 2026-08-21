@@ -10,8 +10,8 @@ that appear in TypeScript and JavaScript code shipped by AI coding assistants
 (and humans) when integrating LLM features. Runs locally before commits and
 in CI.
 
-**Status:** eight rules implemented with vulnerable + safe fixtures, all
-green against `npm test`. Four more are planned for v1. See [`docs/RULES.md`](docs/RULES.md)
+**Status:** the v1 rule set is complete. Twelve rules implemented with
+vulnerable + safe fixtures, all green against `npm test`. See [`docs/RULES.md`](docs/RULES.md)
 for what's shipped and what's planned, [`docs/BRIEF.md`](docs/BRIEF.md) for
 the project pitch, [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) for
 the long-form rationale behind each rule, and

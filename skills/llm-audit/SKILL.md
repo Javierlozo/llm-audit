@@ -82,7 +82,7 @@ address. For each entry:
 
 1. Read the `message`. It contains a description of the failure mode
    and a `Fix:` section with the canonical remediation.
-2. Apply the canonical fix per the rule. The eight rules currently
+2. Apply the canonical fix per the rule. The twelve rules currently
    shipped, with their canonical fixes:
 
    | `ruleId` | OWASP | Canonical fix |
@@ -95,6 +95,10 @@ address. For each entry:
    | `tool-call-dispatch-without-allowlist` | LLM08 | Switch on a closed set of literal tool names, or check membership in an explicit allowlist before dispatch. Validate tool arguments with a schema before the handler runs. |
    | `secrets-in-prompt-context` | LLM06 | Keep credentials in the SDK client config or request headers, never in prompt text. Reference resources by opaque id and resolve them server-side after the model responds. |
    | `request-body-to-llm-without-schema` | LLM01 | Parse the request body with `zod` / `valibot` before use, with an explicit max length on free-text fields. Pass validated values into the `user` role only. Rate limit the endpoint. |
+   | `system-prompt-leakage-in-client-bundle` | LLM07 | Move the prompt to a route handler, Server Action, or a module marked `import "server-only"`. The client sends only the user's text. |
+   | `untrusted-retrieval-context-in-system-role` | LLM01 | Keep `system` static. Put retrieved text in a delimited `user` block and instruct the model to treat it as data, not instructions. |
+   | `model-output-rendered-as-markdown-without-sanitization` | LLM02 | Leave raw HTML disabled, or add `rehype-sanitize` after `rehype-raw` and restrict the allowed schema. Never `sanitize: false` / `html: true` on model output. |
+   | `streaming-response-without-abort-handling` | LLM10 | Pass `abortSignal: request.signal` (AI SDK) or `{ signal: request.signal }` (OpenAI, Anthropic). Rate limit the endpoint. |
 
 3. Re-run the scan against the same paths until the `findings` array
    is empty.

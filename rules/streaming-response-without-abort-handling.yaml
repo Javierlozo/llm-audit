@@ -1,0 +1,47 @@
+rules:
+  - id: streaming-response-without-abort-handling
+    languages: [javascript, typescript]
+    severity: WARNING
+    message: |
+      A streaming model call in a request handler does not forward the
+      request's abort signal.
+
+      When the caller disconnects mid-stream, the browser tab closes or the
+      user hits stop, nothing tells the provider to stop generating. The
+      request keeps running and you keep paying for tokens nobody will read.
+      At any real traffic level this is both an unbounded cost path and a
+      way to pin your provider rate limit with requests that were abandoned
+      seconds after they started.
+
+      Fix:
+        - Pass `abortSignal: request.signal` to `streamText` / `streamObject`
+          (AI SDK) or `{ signal: request.signal }` to the OpenAI and
+          Anthropic SDKs.
+        - Wire the same signal through any tool calls the stream makes.
+        - Rate limit the endpoint. Streaming endpoints are the most
+          expensive thing you expose.
+    metadata:
+      owasp-llm: LLM10
+      category: unbounded-consumption
+      cwe:
+        - "CWE-400"
+        - "CWE-770"
+      references:
+        - https://genai.owasp.org/llmrisk/llm10-unbounded-consumption/
+        - https://ai-sdk.dev/docs/ai-sdk-core/settings#abort-signals
+    patterns:
+      - pattern-inside: |
+          function $HANDLER($REQ, ...) {
+            ...
+          }
+      - pattern-either:
+          - pattern: streamText({...})
+          - pattern: streamObject({...})
+          - pattern: '$C.chat.completions.create({..., stream: true, ...})'
+          - pattern: $C.messages.stream({...})
+      - pattern-not: 'streamText({..., abortSignal: $SIG, ...})'
+      - pattern-not: 'streamObject({..., abortSignal: $SIG, ...})'
+      - pattern-not: '$C.chat.completions.create({..., signal: $SIG, ...})'
+      - pattern-not: '$C.chat.completions.create({...}, {..., signal: $SIG, ...})'
+      - pattern-not: '$C.messages.stream({..., signal: $SIG, ...})'
+      - pattern-not: '$C.messages.stream({...}, {..., signal: $SIG, ...})'
