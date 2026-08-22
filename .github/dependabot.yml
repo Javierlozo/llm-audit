@@ -1,0 +1,11 @@
+# llm-audit has no runtime dependencies — Semgrep is an optional peer dependency
+# installed separately. The only thing here that goes stale is the set of
+# SHA-pinned GitHub Actions, which is exactly the kind of drift nobody notices.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: "ci"

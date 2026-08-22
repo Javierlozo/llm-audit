@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Javierlozo/llm-audit/security/advisories/new
+    about: Code execution, path traversal, or exfiltration — report privately, not as a public issue.

@@ -1,0 +1,46 @@
+# Dogfooding: llm-audit scans its own source with its own rule pack and uploads
+# the result to GitHub Code Scanning. A security tool that does not run against
+# itself is asking for trust it has not earned.
+#
+# Only `src/` is scanned. `test/fixtures/` is deliberately vulnerable code that
+# exists to prove the rules fire, and uploading it would fill the Security tab
+# with findings that are working as intended.
+name: self-scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    # Weekly, so rule changes and new Semgrep releases surface without a push.
+    - cron: "17 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to SHA per https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v6.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v6.4.0
+        with:
+          node-version: 22
+
+      - name: install semgrep
+        run: pipx install semgrep
+
+      # `scan --sarif` exits 1 when it finds something. That is correct for a
+      # pre-commit gate but wrong here: the findings still need to be uploaded
+      # and triaged in the Security tab rather than lost to a failed step.
+      - name: scan src
+        run: node src/cli.mjs scan --sarif src > llm-audit.sarif || true
+
+      - name: upload sarif
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v4
+        with:
+          sarif_file: llm-audit.sarif
+          category: llm-audit

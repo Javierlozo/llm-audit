@@ -1,0 +1,38 @@
+# Fixture suite: every rule must fire on its vulnerable fixture and stay quiet
+# on its safe one. The rule pack is the product, so a red run here blocks a
+# release (release.yml runs the same suite before `npm publish`).
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixtures:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18, 22]
+    steps:
+      # Pinned to SHA per https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v6.0.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020  # v6.4.0
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # Semgrep is the engine, declared as an optional peer dependency. It ships
+      # as a Python package, so it is installed here rather than via npm.
+      - name: install semgrep
+        run: pipx install semgrep
+
+      - name: semgrep version
+        run: semgrep --version
+
+      - name: run fixture suite
+        run: npm test
