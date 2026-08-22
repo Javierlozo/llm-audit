@@ -9,6 +9,8 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-22
+
 ### Changed
 
 - **`scan` and `demo` render their own human output** instead of passing
@@ -42,8 +44,12 @@ independently of the package. It is at `1` and has not changed.
   pack and uploads SARIF to GitHub Code Scanning, weekly and on every push.
 - `SECURITY.md` (private disclosure policy, scope) and `CONTRIBUTING.md` (the
   four-part shape of a rule contribution).
-- README: comparison table against `p/ai-best-practices`, badge and nav header,
-  terminal banner (`assets/cli-banner.svg`).
+- README: comparison table against `p/ai-best-practices`, a badge and nav
+  header, the twelve-rule table (it listed five), and a real capture of `demo`.
+- A visual identity: `assets/logo.svg` and `assets/banner.svg` draw the
+  authority boundary the whole rule pack defends.
+- `SECURITY.md`, `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, issue templates,
+  dependabot for the SHA-pinned actions.
 
 ### Fixed
 
@@ -160,7 +166,8 @@ Four rules complete the v1 set (twelve total):
   Renamed from `@iberiatech/llm-audit` and repositioned as a TS/JS complement
   to Semgrep's `p/ai-best-practices`.
 
-[Unreleased]: https://github.com/Javierlozo/llm-audit/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Javierlozo/llm-audit/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/Javierlozo/llm-audit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/Javierlozo/llm-audit/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/Javierlozo/llm-audit/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/Javierlozo/llm-audit/compare/v0.0.10...v0.1.0
