@@ -23,6 +23,7 @@
   <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/dm/llm-audit?style=flat-square&color=CB3837&label=downloads" alt="npm downloads"></a>
   <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/Node-%E2%89%A518-339933.svg?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node 18+">
+  <a href="https://github.com/Javierlozo/llm-audit/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/Javierlozo/llm-audit/tests.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
   <img src="https://img.shields.io/badge/Rules-12-1f6feb.svg?style=flat-square" alt="12 rules">
   <img src="https://img.shields.io/badge/Output-SARIF_2.1.0-6f42c1.svg?style=flat-square" alt="SARIF 2.1.0">
   <a href="https://semgrep.dev"><img src="https://img.shields.io/badge/Engine-Semgrep-0a7d77.svg?style=flat-square" alt="Powered by Semgrep"></a>
