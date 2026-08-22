@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="304" viewBox="0 0 960 304" role="img" aria-label="llm-audit — untrusted input stopped at the authority boundary, before commit" font-family="ui-sans-serif,-apple-system,Segoe UI,Inter,Helvetica,Arial,sans-serif">
+  <title>llm-audit</title>
+  <rect width="960" height="304" rx="14" fill="#12161c"/>
+  <rect x="0.75" y="0.75" width="958.5" height="302.5" rx="13.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
+
+  <!-- identity: mark + wordmark, left aligned -->
+  <g transform="translate(56,44)">
+    <rect width="56" height="56" rx="13" fill="#1b222c"/>
+    <rect x="27" y="11" width="3" height="34" rx="1.5" fill="#f0b429"/>
+    <rect x="34" y="15" width="13" height="26" rx="2" fill="#2f3947"/>
+    <path d="M11 28 H23" stroke="#e8edf4" stroke-width="3" stroke-linecap="round"/>
+    <path d="M19 23 L24 28 L19 33" fill="none" stroke="#e8edf4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="130" y="72" fill="#e8edf4" font-size="34" font-weight="650" letter-spacing="-0.5">llm-audit</text>
+  <text x="130" y="94" fill="#8b98a9" font-size="14.5">OWASP LLM Top 10 at commit time · TypeScript &amp; JavaScript</text>
+
+  <line x1="56" y1="128" x2="904" y2="128" stroke="#242b35" stroke-width="1"/>
+
+  <!-- the boundary diagram: what crosses, what must not -->
+  <text x="56" y="160" fill="#6c7889" font-size="11.5" letter-spacing="1.4">UNTRUSTED</text>
+  <text x="548" y="160" fill="#6c7889" font-size="11.5" letter-spacing="1.4">PRIVILEGED</text>
+
+  <g font-size="14" fill="#c3ccd8" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+    <text x="56" y="190">request.json()</text>
+    <text x="56" y="216">retrieved docs</text>
+    <text x="56" y="242">model output</text>
+
+    <text x="548" y="190">system role</text>
+    <text x="548" y="216">eval · innerHTML</text>
+    <text x="548" y="242">tool dispatch</text>
+  </g>
+
+  <!-- arrows stopped at the boundary -->
+  <g stroke="#404b5c" stroke-width="2" stroke-linecap="round">
+    <path d="M206 185 H470"/>
+    <path d="M206 211 H470"/>
+    <path d="M206 237 H470"/>
+  </g>
+  <g fill="#f0b429">
+    <circle cx="470" cy="185" r="4.5"/>
+    <circle cx="470" cy="211" r="4.5"/>
+    <circle cx="470" cy="237" r="4.5"/>
+  </g>
+
+  <!-- the boundary itself -->
+  <rect x="504" y="150" width="5" height="104" rx="2.5" fill="#f0b429"/>
+  <text transform="translate(496,254) rotate(-90)" fill="#f0b429" font-size="11" letter-spacing="1.4">BOUNDARY</text>
+
+  <!-- proof strip -->
+  <g font-size="13">
+    <text x="56" y="278" fill="#8b98a9"><tspan fill="#e8edf4" font-weight="600">12 rules</tspan>  ·  vulnerable + safe fixture each  ·  <tspan fill="#e8edf4" font-weight="600">0</tspan> false positives</text>
+    <text x="548" y="278" fill="#6c7889" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">npx llm-audit scan</text>
+  </g>
+</svg>

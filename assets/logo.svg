@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="llm-audit">
+  <title>llm-audit</title>
+  <!--
+    The mark is the product: an authority boundary.
+
+    Untrusted input (the arrow, left) travels toward the model context (the
+    field, right) and is stopped at the boundary rather than crossing into it.
+    Every rule in this pack is some version of that one idea — user text out of
+    the system role, model output out of the eval sink, secrets out of the
+    prompt. Not a mascot, not a shield cliche; the diagram itself.
+  -->
+  <rect width="192" height="192" rx="42" fill="#12161c"/>
+  <rect x="0.75" y="0.75" width="190.5" height="190.5" rx="41.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
+
+  <!-- the context field it is trying to reach -->
+  <rect x="112" y="46" width="42" height="100" rx="6" fill="#1b222c"/>
+  <g fill="#2f3947">
+    <rect x="122" y="62" width="22" height="4" rx="2"/>
+    <rect x="122" y="76" width="22" height="4" rx="2"/>
+    <rect x="122" y="90" width="14" height="4" rx="2"/>
+    <rect x="122" y="104" width="22" height="4" rx="2"/>
+    <rect x="122" y="118" width="18" height="4" rx="2"/>
+  </g>
+
+  <!-- the boundary -->
+  <rect x="94" y="38" width="7" height="116" rx="3.5" fill="#f0b429"/>
+
+  <!-- untrusted input, stopped -->
+  <path d="M38 96 H82" stroke="#e8edf4" stroke-width="7" stroke-linecap="round"/>
+  <path d="M66 78 L84 96 L66 114" fill="none" stroke="#e8edf4" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

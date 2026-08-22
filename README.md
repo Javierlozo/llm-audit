@@ -1,8 +1,6 @@
-<h1 align="center">llm-audit</h1>
+<img src="assets/banner.svg" alt="llm-audit — untrusted input stopped at the authority boundary, before commit" width="100%"/>
 
-<p align="center">
-  <b>OWASP LLM Top 10 at commit time — static analysis for TypeScript &amp; JavaScript LLM code.</b>
-  <br/>
+<p>
   <a href="#quickstart">Quickstart</a>
   ·
   <a href="#rules">Rules</a>
@@ -18,7 +16,7 @@
   <a href="docs/RULES.md">Rule Docs</a>
 </p>
 
-<p align="center">
+<p>
   <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/v/llm-audit?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="npm version"></a>
   <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/dm/llm-audit?style=flat-square&color=CB3837&label=downloads" alt="npm downloads"></a>
   <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
@@ -30,11 +28,7 @@
   <a href="https://github.com/Javierlozo/llm-audit/stargazers"><img src="https://img.shields.io/github/stars/Javierlozo/llm-audit?style=flat-square&color=yellow" alt="GitHub stars"></a>
 </p>
 
-<p align="center">
-  <img src="assets/cli-banner.svg" alt="llm-audit — OWASP LLM Top 10 at commit time" width="900"/>
-</p>
-
-<p align="center">
+<p>
   <b>Built by <a href="https://www.luislozoya.com">luislozoya.com</a></b> — <sub>Shipping AI features without shipping the vulnerabilities</sub>
   <br/>
   <a href="https://www.luislozoya.com/llm-audit">Project page</a>
@@ -99,7 +93,7 @@ the long-form rationale behind each rule, and
 empirical comparison against `p/ai-best-practices` and other LLM-security
 tooling.
 
-<p align="center">
+<p>
   <img src="assets/scan-demo.svg" alt="llm-audit scan output: a streaming route handler flagged for a missing abort signal and an unvalidated request body" width="900"/>
   <br/>
   <sub>Real output from <code>npx llm-audit demo</code>. Every finding carries its OWASP mapping, the risk, and the fix.</sub>
