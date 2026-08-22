@@ -17,7 +17,7 @@
 import { spawnSync } from "node:child_process";
 import { readdirSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join, resolve } from "node:path";
+import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { createInterface } from "node:readline";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -119,6 +119,239 @@ function ensureSemgrep() {
 // can pin to a schemaVersion they understand.
 const JSON_SCHEMA_VERSION = 1;
 
+// ---------------------------------------------------------------------------
+// Semgrep invocation + our own human renderer.
+//
+// We do not use Semgrep's text formatter. It derives the displayed rule ID
+// from the *config path*, so an installed package renders every finding as
+// `Users.you..npm._npx.<hash>.node_modules.llm-audit.rules.hardcoded-llm-api-key`
+// instead of `hardcoded-llm-api-key`. That is unreadable, it leaks the user's
+// home directory into terminal output and CI logs, and there is no Semgrep
+// flag to turn it off. Rendering from `--json` ourselves also drops Semgrep's
+// upsell footer and lets the finding carry its OWASP mapping, which is the
+// thing this pack exists to communicate.
+// ---------------------------------------------------------------------------
+
+function runSemgrepJson(targetPaths) {
+  // `--` locks interpretation: any path starting with `-` is a path, not a
+  // semgrep flag. Defends against a wrapper or piped input injecting flags
+  // via path arguments.
+  const r = spawnSync(
+    "semgrep",
+    [
+      "--config", RULES_DIR,
+      "--json",
+      "--metrics=off",
+      "--quiet",
+      "--",
+      ...targetPaths,
+    ],
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+  );
+
+  if (r.status !== 0 && r.status !== 1) {
+    process.stderr.write(r.stderr || "");
+    process.exit(r.status ?? 1);
+  }
+
+  let out;
+  try {
+    out = JSON.parse(r.stdout);
+  } catch (e) {
+    process.stderr.write(`error: could not parse semgrep output: ${e.message}\n`);
+    process.exit(1);
+  }
+  if (!out || typeof out !== "object" || !Array.isArray(out.results)) {
+    process.stderr.write("error: unexpected semgrep output shape\n");
+    process.exit(1);
+  }
+  return out;
+}
+
+// Semgrep's JSON substitutes the literal string "requires login" for the
+// matched source when the caller is not authenticated to semgrep.dev. The code
+// is the most useful part of a finding, and this tool has no account to log in
+// with, so read the span off disk ourselves and fall back to whatever Semgrep
+// gave us.
+function readSnippet(path, startLine, endLine, fallback) {
+  const given = (fallback || "").trim();
+  if (given && given !== "requires login") return fallback;
+  if (!path || !startLine) return "";
+  try {
+    const all = readFileSync(path, "utf8").split("\n");
+    return all.slice(startLine - 1, (endLine ?? startLine)).join("\n");
+  } catch {
+    return "";
+  }
+}
+
+function buildEnvelope(semgrepOut, targetPaths) {
+  // Semgrep reports one result per matching pattern, so a rule with two
+  // patterns that both match the same span yields two identical findings.
+  // Collapse those: same rule, same file, same span is one finding. Distinct
+  // rules on the same line stay distinct — that is real, not duplication.
+  const seen = new Set();
+  const findings = [];
+
+  for (const f of semgrepOut.results) {
+    // Semgrep namespaces check_id by config path; keep only the rule ID.
+    const ruleId = ((f.check_id || "") + "").split(".").pop();
+    const key = `${ruleId}\u0000${f.path}\u0000${f.start?.line}\u0000${f.end?.line}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    findings.push({
+      ruleId,
+      severity: f.extra?.severity || "INFO",
+      owasp: f.extra?.metadata?.["owasp-llm"] || null,
+      cwe: Array.isArray(f.extra?.metadata?.cwe) ? f.extra.metadata.cwe : [],
+      path: f.path,
+      startLine: f.start?.line,
+      endLine: f.end?.line,
+      message: ((f.extra?.message || "") + "").trim(),
+      lines: readSnippet(f.path, f.start?.line, f.end?.line, f.extra?.lines),
+    });
+  }
+
+  return {
+    schemaVersion: JSON_SCHEMA_VERSION,
+    tool: { name: "llm-audit", version: getVersion() },
+    scannedPaths: targetPaths,
+    summary: { findings: findings.length },
+    findings,
+  };
+}
+
+// Colour only when writing to a terminal, and honour the NO_COLOR convention
+// (https://no-color.org). Piped output stays plain so it greps and diffs.
+const COLOR = Boolean(process.stdout.isTTY) && !process.env.NO_COLOR;
+const c = {
+  reset: COLOR ? "\u001b[0m" : "",
+  bold: COLOR ? "\u001b[1m" : "",
+  dim: COLOR ? "\u001b[2m" : "",
+  red: COLOR ? "\u001b[31m" : "",
+  green: COLOR ? "\u001b[32m" : "",
+  yellow: COLOR ? "\u001b[33m" : "",
+  blue: COLOR ? "\u001b[34m" : "",
+  magenta: COLOR ? "\u001b[35m" : "",
+};
+
+function wrap(text, width, indent) {
+  const out = [];
+  // Rule messages are authored with paragraphs and `-` bullets. Both carry
+  // meaning — the bullets are the remediation steps — so rewrap within a
+  // block rather than flattening everything into one paragraph.
+  const blocks = text
+    .replace(/\n(?=\s*-\s)/g, "\n\n")
+    .split(/\n\s*\n/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+
+  for (const block of blocks) {
+    const bullet = /^\s*-\s+/.test(block);
+    const hanging = bullet ? indent + "  " : indent;
+    const words = block.replace(/^\s*-\s+/, "").split(/\s+/).filter(Boolean);
+    let line = "";
+    let first = true;
+    for (const word of words) {
+      const prefix = first ? (bullet ? indent + "- " : indent) : hanging;
+      if (line && (prefix + line + " " + word).length > width) {
+        out.push(prefix + line);
+        line = word;
+        first = false;
+      } else {
+        line = line ? `${line} ${word}` : word;
+      }
+    }
+    if (line) out.push((first ? (bullet ? indent + "- " : indent) : hanging) + line);
+    // Consecutive bullets read as one list; only paragraphs get breathing room.
+    if (!bullet) out.push("");
+  }
+  while (out.length && out[out.length - 1] === "") out.pop();
+  return out.join("\n");
+}
+
+// Absolute paths in output are noise at best and a home-directory disclosure
+// at worst (screenshots, CI logs, pasted bug reports). Show the shortest
+// honest form: relative to the package root for bundled fixtures, otherwise
+// relative to the working directory when that is shorter than the absolute.
+function displayPath(path, stripPrefix) {
+  if (!path) return path;
+  if (stripPrefix && path.startsWith(stripPrefix + "/")) {
+    return path.slice(stripPrefix.length + 1);
+  }
+  if (!isAbsolute(path)) return path;
+  const rel = relative(process.cwd(), path);
+  return rel && !rel.startsWith("..") && rel.length < path.length ? rel : path;
+}
+
+function renderHuman(envelope, meta = {}) {
+  const width = Math.min(Math.max(process.stdout.columns || 80, 60), 100);
+  const { findings } = envelope;
+
+  if (findings.length === 0) {
+    console.log("");
+    console.log(`${c.green}✓ 0 findings${c.reset} — clean.`);
+    console.log("");
+    console.log(
+      `${c.dim}To see what these rules catch on intentionally vulnerable code:${c.reset}`
+    );
+    console.log("  npx llm-audit demo");
+    return;
+  }
+
+  // Group by file so a reader fixes one file at a time.
+  const byFile = new Map();
+  for (const f of findings) {
+    if (!byFile.has(f.path)) byFile.set(f.path, []);
+    byFile.get(f.path).push(f);
+  }
+
+  for (const [path, fileFindings] of byFile) {
+    console.log("");
+    console.log(`${c.bold}${displayPath(path, meta.stripPrefix)}${c.reset}`);
+
+    for (const f of fileFindings.sort((a, b) => a.startLine - b.startLine)) {
+      const owasp = f.owasp ? `  ${c.yellow}${f.owasp}${c.reset}` : "";
+      console.log("");
+      console.log(
+        `  ${c.red}✗${c.reset} ${c.bold}${f.ruleId}${c.reset}${owasp}` +
+          `${c.dim}  line ${f.startLine}${c.reset}`
+      );
+
+      // The message carries the risk and the canonical fix. It is the whole
+      // product for a reader who has never seen this rule before.
+      const [risk, ...rest] = f.message.split(/\n(?=Fix:)/);
+      console.log(wrap(risk, width - 6, "      "));
+      for (const block of rest) {
+        console.log("");
+        console.log(`${c.blue}${wrap(block, width - 6, "      ")}${c.reset}`);
+      }
+
+      if (f.lines) {
+        console.log("");
+        const codeLines = f.lines.replace(/\n+$/, "").split("\n");
+        codeLines.forEach((line, i) => {
+          const n = String((f.startLine ?? 1) + i).padStart(5);
+          console.log(`  ${c.dim}${n} │${c.reset} ${c.magenta}${line}${c.reset}`);
+        });
+      }
+    }
+  }
+
+  const fileCount = byFile.size;
+  const ruleCount =
+    meta.ruleCount ??
+    readdirSync(RULES_DIR).filter((f) => f.endsWith(".yaml")).length;
+
+  console.log("");
+  console.log(
+    `${c.red}${findings.length} finding${findings.length === 1 ? "" : "s"}${c.reset}` +
+      ` in ${fileCount} file${fileCount === 1 ? "" : "s"}` +
+      `${c.dim} · ${ruleCount} rules run${c.reset}`
+  );
+}
+
 function cmdScan(args) {
   ensureSemgrep();
 
@@ -146,27 +379,9 @@ function cmdScan(args) {
   const targetPaths = paths.length ? paths : ["."];
 
   if (outputFormat === "human") {
-    // Human-readable run via semgrep's default formatter.
-    // `--` locks interpretation: any path starting with `-` is a path,
-    // not a semgrep flag. Defends against scenarios where a wrapper or
-    // piped input could inject semgrep flags via path arguments.
-    const r = spawnSync(
-      "semgrep",
-      ["--config", RULES_DIR, "--error", "--metrics=off", "--", ...targetPaths],
-      { stdio: "inherit" }
-    );
-    // `semgrep --error` exits 0 when nothing fires, 1 when at least one
-    // rule hit. A clean scan can feel anticlimactic; nudge first-time
-    // users toward `demo` so they can see what the rules look like when
-    // they fire.
-    if (r.status === 0) {
-      console.log("");
-      console.log(
-        "0 findings — clean. To see what these rules catch on intentionally"
-      );
-      console.log("vulnerable code, try: `npx llm-audit demo`");
-    }
-    process.exit(r.status ?? 1);
+    const envelope = buildEnvelope(runSemgrepJson(targetPaths), targetPaths);
+    renderHuman(envelope);
+    process.exit(envelope.findings.length === 0 ? 0 : 1);
   }
 
   if (outputFormat === "sarif") {
@@ -191,64 +406,9 @@ function cmdScan(args) {
     process.exit(r.status === 1 ? 1 : r.status ?? 1);
   }
 
-  // outputFormat === "json": run semgrep with --json, capture stdout,
-  // wrap in our versioned envelope, emit to stdout. Exit 0 on no
-  // findings, 1 on findings, mirrors human-mode convention.
-  const r = spawnSync(
-    "semgrep",
-    [
-      "--config", RULES_DIR,
-      "--json",
-      "--metrics=off",
-      "--quiet",
-      "--",
-      ...targetPaths,
-    ],
-    { encoding: "utf8" }
-  );
-
-  if (r.status !== 0 && r.status !== 1) {
-    process.stderr.write(r.stderr || "");
-    process.exit(r.status ?? 1);
-  }
-
-  let semgrepOut;
-  try {
-    semgrepOut = JSON.parse(r.stdout);
-  } catch (e) {
-    process.stderr.write(
-      `error: could not parse semgrep output: ${e.message}\n`
-    );
-    process.exit(1);
-  }
-  if (
-    !semgrepOut ||
-    typeof semgrepOut !== "object" ||
-    !Array.isArray(semgrepOut.results)
-  ) {
-    process.stderr.write("error: unexpected semgrep output shape\n");
-    process.exit(1);
-  }
-
-  const envelope = {
-    schemaVersion: JSON_SCHEMA_VERSION,
-    tool: { name: "llm-audit", version: getVersion() },
-    scannedPaths: targetPaths,
-    summary: {
-      findings: semgrepOut.results.length,
-    },
-    findings: semgrepOut.results.map((f) => ({
-      ruleId: ((f.check_id || "") + "").split(".").pop(),
-      severity: f.extra?.severity || "INFO",
-      owasp: f.extra?.metadata?.["owasp-llm"] || null,
-      cwe: Array.isArray(f.extra?.metadata?.cwe) ? f.extra.metadata.cwe : [],
-      path: f.path,
-      startLine: f.start?.line,
-      endLine: f.end?.line,
-      message: ((f.extra?.message || "") + "").trim(),
-      lines: f.extra?.lines || "",
-    })),
-  };
+  // outputFormat === "json": wrap the findings in our versioned envelope.
+  // Exit 0 on no findings, 1 on findings — same convention as human mode.
+  const envelope = buildEnvelope(runSemgrepJson(targetPaths), targetPaths);
 
   process.stdout.write(JSON.stringify(envelope, null, 2));
   process.stdout.write("\n");
@@ -307,12 +467,14 @@ function cmdDemo() {
   console.log("would catch in your own TS/JS LLM-application code.");
   console.log("");
 
-  // Run all rules against all vulnerable fixtures in one pass.
-  const r = spawnSync(
-    "semgrep",
-    ["--config", RULES_DIR, "--metrics=off", "--", ...vulnerableFiles],
-    { stdio: "inherit" }
+  // Run all rules against all vulnerable fixtures in one pass, rendered with
+  // the same formatter as `scan` so the demo shows exactly what a real run
+  // looks like.
+  const envelope = buildEnvelope(
+    runSemgrepJson(vulnerableFiles),
+    [FIXTURES_DIR]
   );
+  renderHuman(envelope, { ruleCount: ruleIds.length, stripPrefix: PKG_ROOT });
 
   console.log("");
   console.log("Next steps:");
@@ -321,7 +483,7 @@ function cmdDemo() {
   console.log("  - read the rule rationale:     https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md");
   console.log("  - read the project brief:      https://luislozoya.com/llm-audit");
   // Always exit 0: finding things is the point of demo, not a failure.
-  process.exit(r.status === 0 || r.status === 1 ? 0 : (r.status ?? 1));
+  process.exit(0);
 }
 
 function cmdRules() {

@@ -18,6 +18,7 @@
     "src",
     "rules",
     "templates",
+    "assets",
     "test/fixtures",
     "skills",
     "README.md",
@@ -25,7 +26,9 @@
   ],
   "scripts": {
     "scan": "node src/cli.mjs scan",
-    "test": "node test/run-fixtures.mjs"
+    "test": "node test/run-fixtures.mjs && node test/run-cli.mjs",
+    "test:rules": "node test/run-fixtures.mjs",
+    "test:cli": "node test/run-cli.mjs"
   },
   "keywords": [
     "llm",
