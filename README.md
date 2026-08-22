@@ -1,4 +1,49 @@
-# llm-audit
+<h1 align="center">llm-audit</h1>
+
+<p align="center">
+  <b>OWASP LLM Top 10 at commit time — static analysis for TypeScript &amp; JavaScript LLM code.</b>
+  <br/>
+  <a href="#quickstart">Quickstart</a>
+  ·
+  <a href="#rules">Rules</a>
+  ·
+  <a href="#why-not-just-paibest-practices">vs. Semgrep</a>
+  ·
+  <a href="#machine-readable-output-ci-agents-dashboards">JSON / SARIF</a>
+  ·
+  <a href="#adopt-in-your-project">Adopt in CI</a>
+  ·
+  <a href="#using-with-claude-code-cursor-or-codex-cli">Agents</a>
+  ·
+  <a href="docs/RULES.md">Rule Docs</a>
+</p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/v/llm-audit?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/dm/llm-audit?style=flat-square&color=CB3837&label=downloads" alt="npm downloads"></a>
+  <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
+  <img src="https://img.shields.io/badge/Node-%E2%89%A518-339933.svg?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node 18+">
+  <img src="https://img.shields.io/badge/Rules-12-1f6feb.svg?style=flat-square" alt="12 rules">
+  <img src="https://img.shields.io/badge/Output-SARIF_2.1.0-6f42c1.svg?style=flat-square" alt="SARIF 2.1.0">
+  <a href="https://semgrep.dev"><img src="https://img.shields.io/badge/Engine-Semgrep-0a7d77.svg?style=flat-square" alt="Powered by Semgrep"></a>
+  <a href="https://github.com/Javierlozo/llm-audit/stargazers"><img src="https://img.shields.io/github/stars/Javierlozo/llm-audit?style=flat-square&color=yellow" alt="GitHub stars"></a>
+</p>
+
+<p align="center">
+  <img src="assets/cli-banner.svg" alt="llm-audit — OWASP LLM Top 10 at commit time" width="900"/>
+</p>
+
+<p align="center">
+  <b>Built by <a href="https://www.luislozoya.com">luislozoya.com</a></b> — <sub>Shipping AI features without shipping the vulnerabilities</sub>
+  <br/>
+  <a href="https://www.luislozoya.com/llm-audit">Project page</a>
+  ·
+  <a href="https://github.com/Javierlozo/llm-audit/issues">Issues</a>
+  ·
+  <a href="https://www.npmjs.com/package/llm-audit">npm</a>
+</p>
+
+---
 
 > Static analysis for **TypeScript and JavaScript** LLM-application code.
 > OWASP LLM Top 10 at commit time. A complement to Semgrep's
@@ -10,6 +55,40 @@ that appear in TypeScript and JavaScript code shipped by AI coding assistants
 (and humans) when integrating LLM features. Runs locally before commits and
 in CI.
 
+## Why not just `p/ai-best-practices`?
+
+Because it does not scan TypeScript. Semgrep's official AI pack is real and
+good — it is simply Python-first. Run both; they do not overlap.
+
+| | `llm-audit` | Semgrep `p/ai-best-practices` |
+|---|---|---|
+| **JS / TS rules** | **12** | **0** of 27 |
+| Language focus | TypeScript, TSX, JavaScript | Python (13), generic config (11), Bash (3) |
+| Findings on this repo's TS/TSX fixtures | **40** | **0** — every target filtered out before scanning |
+| False positives on the safe fixtures | 0 | n/a |
+| Mapped to | OWASP LLM Top 10 | AI best practices, agent + MCP config hygiene |
+| Install | `npm i -D llm-audit` | `semgrep --config p/ai-best-practices` |
+| Output formats | human, JSON envelope (`schemaVersion: 1`), SARIF 2.1.0 | Semgrep native, SARIF |
+| Runs at | pre-commit hook + CI | CI |
+| License | MIT | LGPL-2.1 (rules) |
+
+Reproduce the top three rows yourself in under a minute:
+
+```sh
+git clone https://github.com/Javierlozo/llm-audit.git && cd llm-audit
+
+# Semgrep's AI pack against the same TypeScript fixtures: 0 targets, 0 findings.
+semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
+
+# llm-audit against them: 12 rules, 40 matches, 0 false positives.
+npm test
+```
+
+Full methodology, the other OSS scanners, and the commercial landscape are in
+[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) — including the
+tools that are **not** competitors (Lakera, Garak, LLM Guard and friends are
+runtime guardrails, a different stage entirely).
+
 **Status:** the v1 rule set is complete. Twelve rules implemented with
 vulnerable + safe fixtures, all green against `npm test`. See [`docs/RULES.md`](docs/RULES.md)
 for what's shipped and what's planned, [`docs/BRIEF.md`](docs/BRIEF.md) for
@@ -18,6 +97,13 @@ the long-form rationale behind each rule, and
 [`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) for the
 empirical comparison against `p/ai-best-practices` and other LLM-security
 tooling.
+
+<p align="center">
+  <img src="assets/scan-demo.svg" alt="llm-audit scan output: a streaming route handler flagged for a missing abort signal and an unvalidated request body" width="900"/>
+  <br/>
+  <sub>Real output from <code>npx llm-audit demo</code>. Every finding carries its OWASP mapping, the risk, and the fix.</sub>
+</p>
+
 
 ## Quickstart
 
@@ -59,7 +145,7 @@ JSON envelope shape:
 ```jsonc
 {
   "schemaVersion": 1,
-  "tool": { "name": "llm-audit", "version": "0.0.5" },
+  "tool": { "name": "llm-audit", "version": "0.2.0" },
   "scannedPaths": ["src"],
   "summary": { "findings": 0 },
   "findings": [
@@ -195,7 +281,7 @@ npm i -D llm-audit
 …or pin a version directly in the workflow file:
 
 ```yaml
-- run: npx llm-audit@0.0.9 scan
+- run: npx llm-audit@0.2.0 scan
 ```
 
 ## Why
@@ -231,19 +317,29 @@ plain Semgrep configuration:
 semgrep --config node_modules/llm-audit/rules .
 ```
 
-## Rules in v0
+## Rules
+
+Twelve rules, each mapped to an [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
+entry and backed by a vulnerable + safe fixture in `test/fixtures/<rule-id>/`.
 
 | ID | OWASP | Summary |
 |---|---|---|
 | `untrusted-input-in-system-prompt` | LLM01 | User input placed into the LLM `system` role |
 | `untrusted-input-concatenated-into-prompt-template` | LLM01 | User input interpolated into a single-string prompt with no role boundary |
+| `untrusted-retrieval-context-in-system-role` | LLM01 | Retrieved documents given system authority — indirect prompt injection |
+| `request-body-to-llm-without-schema` | LLM01 | Raw request body reaching an LLM call with no schema validation at the boundary |
 | `llm-output-insecure-handling` | LLM02 | Model output flows into `eval`, raw HTML, or shell |
 | `model-output-parsed-without-schema` | LLM02 | `JSON.parse` on model output without a schema validator on the path |
+| `model-output-rendered-as-markdown-without-sanitization` | LLM02 | Markdown renderer with HTML enabled or sanitization disabled on model output |
 | `hardcoded-llm-api-key` | LLM06 | Inline LLM provider API key in source |
+| `secrets-in-prompt-context` | LLM06 | Environment secrets interpolated into prompt text sent to the provider |
+| `system-prompt-leakage-in-client-bundle` | LLM07 | Prompt-shaped constants inside a `'use client'` module, shipped to the browser |
+| `tool-call-dispatch-without-allowlist` | LLM08 | Model-chosen tool name dispatched without an allowlist |
+| `streaming-response-without-abort-handling` | LLM10 | Streaming call in a request handler with no `signal` forwarded |
 
-The full v1 plan and the rationale for each shipped rule is tracked in
-[`docs/RULES.md`](docs/RULES.md). The long-form "why AI assistants reproduce
-these patterns" writeup lives in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md).
+Full rationale for each rule — what it catches, **why an AI assistant tends to
+write the pattern**, and the canonical fix — is in [`docs/RULES.md`](docs/RULES.md).
+The long-form writeup lives in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md).
 
 ## Project layout
 

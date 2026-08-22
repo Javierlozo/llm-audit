@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="611" height="488" viewBox="0 0 611 488" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" role="img" aria-label="llm-audit scan output">
+<rect fill="#0b0f14" width="611" height="488" rx="8"/>
+<circle cx="24" cy="22" r="5" fill="#ff5f57"/><circle cx="42" cy="22" r="5" fill="#febc2e"/><circle cx="60" cy="22" r="5" fill="#28c840"/>
+<text x="305.5" y="26" fill="#7d8590" font-size="11" text-anchor="middle">llm-audit</text>
+<text x="22" y="50" fill="#e6edf3" font-size="11" xml:space="preserve">$ npx llm-audit demo</text>
+<text x="22" y="66" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="82" fill="#e6edf3" font-size="11" xml:space="preserve">test/fixtures/model-output-parsed-without-schema/vulnerable.ts</text>
+<text x="22" y="98" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="114" fill="#f85149" font-size="11" xml:space="preserve">  ✗ model-output-parsed-without-schema  LLM02  line 15</text>
+<text x="22" y="130" fill="#8b949e" font-size="11" xml:space="preserve">      Model output is being parsed with `JSON.parse` and used without</text>
+<text x="22" y="146" fill="#8b949e" font-size="11" xml:space="preserve">      schema validation. The model can return malformed JSON, unexpected</text>
+<text x="22" y="162" fill="#8b949e" font-size="11" xml:space="preserve">      fields, or attacker-steered content (LLM02 Insecure Output</text>
+<text x="22" y="178" fill="#8b949e" font-size="11" xml:space="preserve">      Handling). Parsing succeeds, downstream code trusts the shape, and</text>
+<text x="22" y="194" fill="#8b949e" font-size="11" xml:space="preserve">      security-relevant fields can be silently injected.</text>
+<text x="22" y="210" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="226" fill="#58a6ff" font-size="11" xml:space="preserve">      Fix:</text>
+<text x="22" y="242" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="258" fill="#58a6ff" font-size="11" xml:space="preserve">      - Use `generateObject` (AI SDK) or `responseFormat: json_schema`</text>
+<text x="22" y="274" fill="#8b949e" font-size="11" xml:space="preserve">        (OpenAI) so the model is constrained and parsing failure is</text>
+<text x="22" y="290" fill="#8b949e" font-size="11" xml:space="preserve">        structured.</text>
+<text x="22" y="306" fill="#58a6ff" font-size="11" xml:space="preserve">      - Run output through a schema validator (zod, valibot) before</text>
+<text x="22" y="322" fill="#8b949e" font-size="11" xml:space="preserve">        property access.</text>
+<text x="22" y="338" fill="#58a6ff" font-size="11" xml:space="preserve">      - Default-deny on unknown fields.</text>
+<text x="22" y="354" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="370" fill="#d2a8ff" font-size="11" xml:space="preserve">     15 │   const data = JSON.parse(r.choices[0].message.content as string);</text>
+<text x="22" y="386" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="402" fill="#484f58" font-size="11" xml:space="preserve">  ...</text>
+<text x="22" y="418" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+<text x="22" y="434" fill="#3fb950" font-size="11" xml:space="preserve">42 findings in 12 files · 12 rules run</text>
+<text x="22" y="450" fill="#8b949e" font-size="11" xml:space="preserve"></text>
+</svg>

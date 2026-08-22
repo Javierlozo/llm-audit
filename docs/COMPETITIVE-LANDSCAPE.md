@@ -62,7 +62,7 @@ PASS untrusted-input-concatenated-into-prompt-template  vulnerable=3/3  safe=0
 PASS untrusted-input-in-system-prompt                   vulnerable=5/5  safe=0
 ```
 
-37 vulnerability matches caught across 12 rules, 0 false positives on the safe
+40 vulnerability matches caught across 12 rules, 0 false positives on the safe
 fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 
 ---
@@ -176,7 +176,7 @@ Honest framing: `llm-audit` is **not** a category-creating product. It is a
 **well-positioned complement** to `p/ai-best-practices`, occupying the
 TypeScript / JavaScript LLM-app niche the upstream pack does not cover. That
 positioning is empirically defensible — running Semgrep's pack against a TS/JS
-fixture set produces zero hits, and `llm-audit` produces 21.
+fixture set produces zero hits, and `llm-audit` produces 40.
 
 The right pitch is "the TS/JS half of the LLM-Top-10 SAST story," not "I
 invented a category."
@@ -197,7 +197,7 @@ git clone https://github.com/Javierlozo/llm-audit.git
 cd llm-audit
 semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
 
-# Confirm 21 hits with llm-audit's own pack
+# Confirm 40 hits with llm-audit's own pack
 npm test
 ```
 

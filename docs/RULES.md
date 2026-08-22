@@ -7,9 +7,35 @@ a short note on **why an AI coding assistant tends to write this pattern**.
 That last note is intentional. The rules exist because AI assistants reproduce
 these shapes regularly, and naming the failure mode is part of the value.
 
-## v0 (shipped)
+## Rule index
 
-### `untrusted-input-in-system-prompt`
+Twelve shipped rules. Jump to any of them for what it catches, why an AI
+assistant tends to write the pattern, and the fix.
+
+| Rule | OWASP | CWE |
+|---|---|---|
+| [`untrusted-input-in-system-prompt`](#untrusted-input-in-system-prompt) | LLM01 — Prompt Injection | CWE-77, CWE-94 |
+| [`untrusted-input-concatenated-into-prompt-template`](#untrusted-input-concatenated-into-prompt-template) | LLM01 — Prompt Injection | CWE-77 |
+| [`untrusted-retrieval-context-in-system-role`](#untrusted-retrieval-context-in-system-role) | LLM01 — Prompt Injection | CWE-77, CWE-94 |
+| [`request-body-to-llm-without-schema`](#request-body-to-llm-without-schema) | LLM01 — Prompt Injection | CWE-20, CWE-77 |
+| [`llm-output-insecure-handling`](#llm-output-insecure-handling) | LLM02 — Insecure Output Handling | CWE-79, CWE-94, CWE-78 |
+| [`model-output-parsed-without-schema`](#model-output-parsed-without-schema) | LLM02 — Insecure Output Handling | CWE-20 |
+| [`model-output-rendered-as-markdown-without-sanitization`](#model-output-rendered-as-markdown-without-sanitization) | LLM02 — Insecure Output Handling | CWE-79, CWE-80 |
+| [`hardcoded-llm-api-key`](#hardcoded-llm-api-key) | LLM06 — Sensitive Information Disclosure | CWE-798 |
+| [`secrets-in-prompt-context`](#secrets-in-prompt-context) | LLM06 — Sensitive Information Disclosure | CWE-200, CWE-532 |
+| [`system-prompt-leakage-in-client-bundle`](#system-prompt-leakage-in-client-bundle) | LLM07 — System Prompt Leakage | CWE-200, CWE-540 |
+| [`tool-call-dispatch-without-allowlist`](#tool-call-dispatch-without-allowlist) | LLM08 — Excessive Agency | CWE-470, CWE-77 |
+| [`streaming-response-without-abort-handling`](#streaming-response-without-abort-handling) | LLM10 — Unbounded Consumption | CWE-400, CWE-770 |
+
+---
+
+## Rule reference
+
+Grouped by the release that shipped each rule.
+
+### v0 (shipped)
+
+#### `untrusted-input-in-system-prompt`
 
 - **OWASP:** LLM01 — Prompt Injection
 - **CWE:** CWE-77, CWE-94
@@ -22,7 +48,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** keep the system prompt static, place untrusted input only in the
   `user` role, and validate the input shape with zod / valibot at the boundary.
 
-### `llm-output-insecure-handling`
+#### `llm-output-insecure-handling`
 
 - **OWASP:** LLM02 — Insecure Output Handling
 - **CWE:** CWE-79, CWE-94, CWE-78
@@ -35,7 +61,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** validate model output against a schema (zod), escape before rendering,
   never pass it to a code-execution sink.
 
-### `untrusted-input-concatenated-into-prompt-template`
+#### `untrusted-input-concatenated-into-prompt-template`
 
 - **OWASP:** LLM01 — Prompt Injection
 - **CWE:** CWE-77
@@ -49,7 +75,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** use the `messages` API with explicit role boundaries, place user
   input only in `user`, keep `system` static.
 
-### `model-output-parsed-without-schema`
+#### `model-output-parsed-without-schema`
 
 - **OWASP:** LLM02 — Insecure Output Handling
 - **CWE:** CWE-20
@@ -62,7 +88,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** prefer `generateObject` / structured outputs / `responseFormat:
   json_schema`, or run results through `Schema.parse` before property access.
 
-### `hardcoded-llm-api-key`
+#### `hardcoded-llm-api-key`
 
 - **OWASP:** LLM06 (overlap with secret-scanning category)
 - **CWE:** CWE-798
@@ -75,9 +101,9 @@ these shapes regularly, and naming the failure mode is part of the value.
   prefer OIDC / workload identity where supported. Run `gitleaks` in CI as
   a backstop.
 
-## v0.1 (shipped)
+### v0.1 (shipped)
 
-### `tool-call-dispatch-without-allowlist`
+#### `tool-call-dispatch-without-allowlist`
 
 - **OWASP:** LLM08 — Excessive Agency
 - **CWE:** CWE-470, CWE-77
@@ -92,7 +118,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** switch on literal tool names, or check an explicit allowlist before
   dispatch, and validate the arguments with a schema before the handler runs.
 
-### `secrets-in-prompt-context`
+#### `secrets-in-prompt-context`
 
 - **OWASP:** LLM06 — Sensitive Information Disclosure
 - **CWE:** CWE-200, CWE-532
@@ -104,7 +130,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** keep credentials in the client config or request headers, reference
   resources by opaque id, and resolve them server-side after the model responds.
 
-### `request-body-to-llm-without-schema`
+#### `request-body-to-llm-without-schema`
 
 - **OWASP:** LLM01 — Prompt Injection
 - **CWE:** CWE-20, CWE-77
@@ -128,9 +154,9 @@ these shapes regularly, and naming the failure mode is part of the value.
   endpoints that validate correctly without a schema library, and a rule that
   fires on correct code is a rule people turn off.
 
-## v1 (shipped)
+### v1 (shipped)
 
-### `system-prompt-leakage-in-client-bundle`
+#### `system-prompt-leakage-in-client-bundle`
 
 - **OWASP:** LLM07 — System Prompt Leakage
 - **CWE:** CWE-200, CWE-540
@@ -145,7 +171,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Note:** env vars in prompts, `NEXT_PUBLIC_` included, are covered by
   `secrets-in-prompt-context` instead, so one line produces one finding.
 
-### `untrusted-retrieval-context-in-system-role`
+#### `untrusted-retrieval-context-in-system-role`
 
 - **OWASP:** LLM01 — Prompt Injection
 - **CWE:** CWE-77, CWE-94
@@ -158,7 +184,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** keep `system` static, put retrieved text in a delimited `user`
   block, and instruct the model to treat it as data rather than instructions.
 
-### `model-output-rendered-as-markdown-without-sanitization`
+#### `model-output-rendered-as-markdown-without-sanitization`
 
 - **OWASP:** LLM02 — Insecure Output Handling
 - **CWE:** CWE-79, CWE-80
@@ -170,7 +196,7 @@ these shapes regularly, and naming the failure mode is part of the value.
 - **Fix:** leave HTML disabled, or put `rehype-sanitize` after `rehype-raw`
   and restrict the schema to the tags you actually use.
 
-### `streaming-response-without-abort-handling`
+#### `streaming-response-without-abort-handling`
 
 - **OWASP:** LLM10 — Unbounded Consumption
 - **CWE:** CWE-400, CWE-770
