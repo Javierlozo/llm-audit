@@ -121,6 +121,26 @@ check("rules lists all twelve shipped rules", () => {
 if (!hasSemgrep()) {
   console.log("SKIP scan tests — semgrep is not installed");
 } else {
+  check("rules <id> explains one rule and shows the verified fix", () => {
+    const r = run(["rules", "hardcoded-llm-api-key"]);
+    assertEqual(r.status, 0, "exit code");
+    for (const section of [
+      "What it catches",
+      "Why an AI assistant writes this",
+      "How to fix it",
+      "The fixed shape",
+    ]) {
+      assert(r.stdout.includes(section), `rules detail is missing '${section}'`);
+    }
+    assert(r.stdout.includes("process.env"), "expected the safe fixture's code");
+  });
+
+  check("rules <unknown-id> exits 2", () => {
+    const r = run(["rules", "no-such-rule"]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/unknown rule/.test(r.stderr), "expected an unknown-rule message");
+  });
+
   check("scan exits 0 on clean code", () => {
     withTempDir((dir) => {
       writeFileSync(join(dir, "clean.ts"), "export const greeting = 'hello';\n");
@@ -137,6 +157,123 @@ if (!hasSemgrep()) {
   check("scan --json exits 1 when it finds something", () => {
     const r = run(["scan", "--json", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
     assertEqual(r.status, 1, "exit code");
+  });
+
+  // --- filters, density, and the HTML report -------------------------------
+
+  check("scan --rule narrows to one rule and says the view is filtered", () => {
+    const r = run([
+      "scan",
+      "--rule",
+      "hardcoded-llm-api-key",
+      join(FIXTURES, "llm-output-insecure-handling", "vulnerable.tsx"),
+      join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+    ]);
+    assert(r.stdout.includes("hardcoded-llm-api-key"), "expected the requested rule");
+    assert(
+      !r.stdout.includes("llm-output-insecure-handling"),
+      "a filtered run must not report other rules"
+    );
+    assert(/Filtered view/.test(r.stdout), "expected the filtered-view caveat");
+  });
+
+  check("scan --severity error drops warnings", () => {
+    const r = run([
+      "scan",
+      "--json",
+      "--severity",
+      "error",
+      join(FIXTURES, "model-output-parsed-without-schema", "vulnerable.ts"),
+      join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+    ]);
+    const findings = JSON.parse(r.stdout).findings;
+    assert(findings.length > 0, "expected the error-severity findings to survive");
+    assert(
+      findings.every((f) => f.severity === "ERROR"),
+      "a warning survived --severity error"
+    );
+  });
+
+  check("scan --compact prints one line per finding", () => {
+    const target = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+    const compact = run(["scan", "--compact", target]);
+    const verbose = run(["scan", "--verbose", target]);
+    assert(compact.stdout.includes("hardcoded-llm-api-key"), "expected the rule id");
+    assert(
+      !/Inline keys leak/.test(compact.stdout),
+      "compact output must not carry the full rationale"
+    );
+    assert(/Inline keys leak/.test(verbose.stdout), "verbose output must carry it");
+    assert(
+      compact.stdout.length < verbose.stdout.length,
+      "compact output should be shorter than verbose"
+    );
+  });
+
+  check("scan --html writes a self-contained report", () => {
+    withTempDir((dir) => {
+      const out = join(dir, "nested", "report.html");
+      const r = run([
+        "scan",
+        "--html",
+        out,
+        join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+      ]);
+      assertEqual(r.status, 1, "exit code");
+      assert(existsSync(out), "report was not written");
+      const html = readFileSync(out, "utf8");
+      assert(html.startsWith("<!doctype html>"), "expected an HTML document");
+      assert(html.includes("hardcoded-llm-api-key"), "report is missing the rule");
+      assert(html.includes("Why an AI assistant writes this"), "report is missing the rationale");
+      assert(html.includes("The fixed shape, verified"), "report is missing the safe example");
+      assert(
+        !/<(script|iframe)\b/i.test(html),
+        "the report must not carry script or iframe content"
+      );
+      assert(
+        !/\b(src|href)="https?:\/\/(?!github\.com|owasp\.org)/.test(html),
+        "the report must not load remote assets"
+      );
+    });
+  });
+
+  check("--sarif refuses to pretend it applied filters", () => {
+    const r = run(["scan", "--sarif", "--rule", "hardcoded-llm-api-key", "."]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/cannot be combined/.test(r.stderr), "expected an explanatory error");
+  });
+
+  // --- scan --fail-on: the CI exit-code policy -----------------------------
+  // The report is always printed; --fail-on only decides the exit code, so a
+  // team can adopt the pack on a legacy repo without a red pipeline on day one.
+
+  check("scan --fail-on never exits 0 despite findings", () => {
+    const r = run([
+      "scan",
+      "--fail-on",
+      "never",
+      join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+    ]);
+    assertEqual(r.status, 0, "exit code");
+    assert(r.stdout.includes("hardcoded-llm-api-key"), "the report must still print");
+  });
+
+  check("scan --fail-on error ignores warning-only findings", () => {
+    const errorFixture = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+    const warnFixture = join(
+      FIXTURES,
+      "model-output-parsed-without-schema",
+      "vulnerable.ts"
+    );
+    assertEqual(run(["scan", "--fail-on", "error", errorFixture]).status, 1, "error fixture");
+    assertEqual(run(["scan", "--fail-on", "error", warnFixture]).status, 0, "warning fixture");
+    assertEqual(run(["scan", "--fail-on", "warning", warnFixture]).status, 1, "warning threshold");
+  });
+
+  check("scan rejects an unknown --fail-on level", () => {
+    const r = run(["scan", "--fail-on", "sometimes", "."]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/--fail-on expects/.test(r.stderr), "expected a usage message on stderr");
   });
 
   check("scan produces no findings against the safe fixtures", () => {

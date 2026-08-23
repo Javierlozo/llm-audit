@@ -94,9 +94,11 @@ empirical comparison against `p/ai-best-practices` and other LLM-security
 tooling.
 
 <p>
-  <img src="assets/scan-demo.svg" alt="llm-audit scan output: a streaming route handler flagged for a missing abort signal and an unvalidated request body" width="900"/>
+  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler is flagged for a hardcoded provider key and for parsing model output without a schema, ending in a severity summary" width="820"/>
   <br/>
-  <sub>Real output from <code>npx llm-audit demo</code>. Every finding carries its OWASP mapping, the risk, and the fix.</sub>
+  <sub>A real run against a real chat route handler — regenerated from live CLI output by
+  <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
+  the risk, and the fix. (Motion honours <code>prefers-reduced-motion</code>.)</sub>
 </p>
 
 
@@ -133,6 +135,49 @@ npx llm-audit scan --json src > findings.json
 # SARIF 2.1.0, the standard for security-tool output.
 # Upload directly to GitHub Code Scanning via codeql-action/upload-sarif.
 npx llm-audit scan --sarif src > findings.sarif
+```
+
+### A report you can hand to someone else
+
+```bash
+npx llm-audit scan --html llm-audit-report.html src
+```
+
+One self-contained HTML file — no scripts, no network, no assets — that opens
+from disk, prints cleanly, and survives being attached to a PR or kept as a CI
+artifact. It groups findings under the rule that explains them and carries, for
+each one: what the rule catches, **why an AI assistant tends to write the
+pattern**, how to fix it, and the pack's own `safe.*` fixture as a worked
+example. That fixture is not illustrative — `npm test` asserts on every commit
+that it produces zero findings, so the fix in the report is a fix that is
+checked.
+
+The same material is one command away in the terminal:
+
+```bash
+npx llm-audit rules hardcoded-llm-api-key
+```
+
+### Focusing a run
+
+```bash
+npx llm-audit scan --rule hardcoded-llm-api-key src   # one rule
+npx llm-audit scan --severity error src               # errors only
+npx llm-audit scan --compact src                      # one line per finding
+```
+
+Past 15 findings the terminal switches to compact on its own — the full
+rationale for every hit stops teaching and starts scrolling. Filtered output is
+always labelled as filtered, in the terminal and inside the HTML report, so a
+narrow pass is never mistaken for a clean bill of health.
+
+Adopting on a repo that already has findings? Print the whole report but
+only fail the build on the severities you are ready to enforce, then tighten
+the level as you burn the backlog down:
+
+```bash
+npx llm-audit scan --fail-on error src   # report all, exit 1 only on errors
+npx llm-audit scan --fail-on never src   # report all, never fail the build
 ```
 
 JSON envelope shape:

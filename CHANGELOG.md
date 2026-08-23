@@ -9,6 +9,43 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Added
+
+- **`scan --html <file>`** writes a standalone, shareable HTML report: findings
+  grouped under the rule that explains them, with what the rule catches, why an
+  AI assistant writes the pattern, how to fix it, and the pack's own `safe.*`
+  fixture as a worked example of the fix. One self-contained file — no assets,
+  no scripts, no network — so it works as a CI artifact or an email attachment.
+  A filtered run says so inside the document.
+- **`rules <rule-id>`** explains a single rule in the terminal, ending with the
+  verified safe implementation.
+- `scan --rule <id>` (repeatable / comma-separated) and `scan --severity
+  <level>` narrow a run. Filtered output is labelled as filtered so it is never
+  mistaken for a clean bill of health.
+- `scan --compact` / `--verbose`. Past 15 findings the human renderer switches
+  to one line per finding on its own and tells you how to get the detail back.
+- `scan --fail-on <any|error|warning|info|never>` separates the report from
+  the exit code, so a repo with an existing backlog can adopt the pack
+  without a red pipeline on day one.
+- `npm run demo:svg` (`tools/make-scan-demo.mjs`) regenerates the README hero
+  by scanning a real sample app with the real CLI and rendering the live ANSI
+  output as an animated terminal SVG. The asset is reproducible byte-for-byte
+  and honours `prefers-reduced-motion`.
+- `FORCE_COLOR` opts non-TTY consumers into coloured output, and `COLUMNS`
+  pins the wrap width — both standard conventions, and what makes the hero
+  reproducible without a pty.
+- `--help` and `demo` open with a one-line identity (name, version, what the
+  tool is). TTY-gated: piped and captured output stays plain text.
+
+### Changed
+
+- Human output leads with severity. Findings are grouped by file, the files
+  holding the worst finding come first, each finding carries a coloured
+  severity tag, and the summary breaks the total down by severity and by how
+  many rules actually fired.
+- A rule that fires repeatedly explains itself once. Later occurrences keep
+  their line number and source snippet but point back to the first.
+
 ## [0.3.0] — 2026-08-22
 
 ### Changed

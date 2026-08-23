@@ -1,31 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="615" height="474" viewBox="0 0 615 474" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" role="img" aria-label="llm-audit scan output">
-<rect fill="#12161c" width="615" height="474" rx="10"/>
-<rect x="0.75" y="0.75" width="613.5" height="472.5" rx="9.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
-
-<text x="24" y="34" fill="#e8edf4" font-size="11" xml:space="preserve">$ npx llm-audit demo</text>
-<text x="24" y="50" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="66" fill="#e8edf4" font-size="11" xml:space="preserve">test/fixtures/model-output-parsed-without-schema/vulnerable.ts</text>
-<text x="24" y="82" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="98" fill="#f0b429" font-size="11" xml:space="preserve">  ✗ model-output-parsed-without-schema  LLM02  line 15</text>
-<text x="24" y="114" fill="#8b98a9" font-size="11" xml:space="preserve">      Model output is being parsed with `JSON.parse` and used without</text>
-<text x="24" y="130" fill="#8b98a9" font-size="11" xml:space="preserve">      schema validation. The model can return malformed JSON, unexpected</text>
-<text x="24" y="146" fill="#8b98a9" font-size="11" xml:space="preserve">      fields, or attacker-steered content (LLM02 Insecure Output</text>
-<text x="24" y="162" fill="#8b98a9" font-size="11" xml:space="preserve">      Handling). Parsing succeeds, downstream code trusts the shape, and</text>
-<text x="24" y="178" fill="#8b98a9" font-size="11" xml:space="preserve">      security-relevant fields can be silently injected.</text>
-<text x="24" y="194" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="210" fill="#8fb3d9" font-size="11" xml:space="preserve">      Fix:</text>
-<text x="24" y="226" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="242" fill="#8fb3d9" font-size="11" xml:space="preserve">      - Use `generateObject` (AI SDK) or `responseFormat: json_schema`</text>
-<text x="24" y="258" fill="#8b98a9" font-size="11" xml:space="preserve">        (OpenAI) so the model is constrained and parsing failure is</text>
-<text x="24" y="274" fill="#8b98a9" font-size="11" xml:space="preserve">        structured.</text>
-<text x="24" y="290" fill="#8fb3d9" font-size="11" xml:space="preserve">      - Run output through a schema validator (zod, valibot) before</text>
-<text x="24" y="306" fill="#8b98a9" font-size="11" xml:space="preserve">        property access.</text>
-<text x="24" y="322" fill="#8fb3d9" font-size="11" xml:space="preserve">      - Default-deny on unknown fields.</text>
-<text x="24" y="338" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="354" fill="#c3ccd8" font-size="11" xml:space="preserve">     15 │   const data = JSON.parse(r.choices[0].message.content as string);</text>
-<text x="24" y="370" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="386" fill="#484f58" font-size="11" xml:space="preserve">  ...</text>
-<text x="24" y="402" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
-<text x="24" y="418" fill="#3fb950" font-size="11" xml:space="preserve">42 findings in 12 files · 12 rules run</text>
-<text x="24" y="434" fill="#8b98a9" font-size="11" xml:space="preserve"></text>
+<svg xmlns="http://www.w3.org/2000/svg" width="653" height="542" viewBox="0 0 653 542" role="img" aria-label="Running npx llm-audit scan src: two findings in a chat route handler, a hardcoded provider key and model output parsed without a schema" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+<title>npx llm-audit scan src</title>
+<style>
+.ln{opacity:0;animation:in .01s linear forwards}
+.cur{animation:blink 1s steps(1,end) infinite}
+.type{transform:scaleX(0);transform-origin:0 0;animation:type 900ms steps(22,end) forwards}
+@keyframes in{to{opacity:1}}
+@keyframes type{to{transform:scaleX(1)}}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+.ln{opacity:1;animation:none}
+.cur{animation:none;opacity:0}
+.type{transform:scaleX(1);animation:none}
+}
+</style>
+<rect width="653" height="542" rx="10" fill="#12161c"/>
+<rect x="0.75" y="0.75" width="651.5" height="540.5" rx="9.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
+<text x="22" y="25" fill="#8b98a9" font-size="11" font-weight="600" xml:space="preserve">llm-audit</text>
+<text x="631" y="25" fill="#6b7789" font-size="10" text-anchor="end">OWASP LLM Top 10 · TypeScript</text>
+<line x1="0" y1="37" x2="653" y2="37" stroke="#242b35" stroke-width="1"/>
+<clipPath id="typing"><rect class="type" x="35.24" y="49" width="145.64" height="16"/></clipPath>
+<text x="22" y="60" fill="#4ec9a5" font-size="11" textLength="13.24" lengthAdjust="spacingAndGlyphs" xml:space="preserve">$ </text>
+<text x="35.24" y="60" fill="#e8edf4" font-size="11" textLength="145.64" lengthAdjust="spacingAndGlyphs" clip-path="url(#typing)" xml:space="preserve">npx llm-audit scan src</text>
+<rect class="cur" x="183.88" y="50" width="6.62" height="13" fill="#4ec9a5" style="animation-delay:900ms"/>
+<text class="ln" y="108" font-size="11" xml:space="preserve" style="animation-delay:1655ms"><tspan x="22.00" textLength="165.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">src/app/api/chat/route.ts</tspan><tspan x="187.50" textLength="79.44" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  3 findings</tspan></text>
+<text class="ln" y="140" font-size="11" xml:space="preserve" style="animation-delay:1765ms"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#f2777a">✗</tspan><tspan x="41.86" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="48.48" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">error  </tspan><tspan x="94.82" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="101.44" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">hardcoded-llm-api-key</tspan><tspan x="240.46" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="253.70" textLength="33.10" lengthAdjust="spacingAndGlyphs" fill="#f0b429">LLM06</tspan><tspan x="286.80" textLength="52.96" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  line 3</tspan></text>
+<text class="ln" y="156" font-size="11" xml:space="preserve" style="animation-delay:1820ms"><tspan x="22.00" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      An LLM provider API key appears to be hardcoded in source.</tspan></text>
+<text class="ln" y="188" font-size="11" xml:space="preserve" style="animation-delay:1930ms"><tspan x="22.00" textLength="509.74" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      Inline keys leak via git history, client bundles, logs, error messages,</tspan></text>
+<text class="ln" y="204" font-size="11" xml:space="preserve" style="animation-delay:1985ms"><tspan x="22.00" textLength="476.64" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      and screenshots. Even after rotation, a leaked key is a real-money</tspan></text>
+<text class="ln" y="220" font-size="11" xml:space="preserve" style="animation-delay:2040ms"><tspan x="22.00" textLength="99.30" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      incident.</tspan></text>
+<text class="ln" y="252" font-size="11" xml:space="preserve" style="animation-delay:2150ms"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#6aa9ff">      Fix:</tspan></text>
+<text class="ln" y="284" font-size="11" xml:space="preserve" style="animation-delay:2260ms"><tspan x="22.00" textLength="483.26" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Read keys from environment variables, validated at startup with a</tspan></text>
+<text class="ln" y="300" font-size="11" xml:space="preserve" style="animation-delay:2315ms"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        schema (e.g. zod). Default-deny on missing keys.</tspan></text>
+<text class="ln" y="316" font-size="11" xml:space="preserve" style="animation-delay:2370ms"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - For platforms that support it (Vercel AI Gateway, AWS Bedrock), use</tspan></text>
+<text class="ln" y="332" font-size="11" xml:space="preserve" style="animation-delay:2425ms"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        OIDC / workload identity instead of static keys.</tspan></text>
+<text class="ln" y="348" font-size="11" xml:space="preserve" style="animation-delay:2480ms"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Run `gitleaks` or `trufflehog` in CI as a backstop, since this rule</tspan></text>
+<text class="ln" y="364" font-size="11" xml:space="preserve" style="animation-delay:2535ms"><tspan x="22.00" textLength="331.00" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        only catches the inline-constructor shape.</tspan></text>
+<text class="ln" y="396" font-size="11" xml:space="preserve" style="animation-delay:2645ms"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    3 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="542.84" lengthAdjust="spacingAndGlyphs" fill="#c792ea">const openai = new OpenAI({ apiKey: "sk-proj-AAAA1111BBBB2222CCCC3333DDDD4444" });</tspan></text>
+<text class="ln" y="444" font-size="11" xml:space="preserve" style="animation-delay:2810ms"><tspan x="22.00" textLength="430.30" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">      ⋮  41 more lines — the rest of the report, then the summary</tspan></text>
+<text class="ln" y="460" font-size="11" xml:space="preserve" style="animation-delay:2865ms"><tspan x="22.00" textLength="397.20" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">────────────────────────────────────────────────────────────</tspan></text>
+<text class="ln" y="476" font-size="11" xml:space="preserve" style="animation-delay:2920ms"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">3 findings</tspan><tspan x="88.20" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="101.44" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">1 error</tspan><tspan x="147.78" textLength="19.86" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> · </tspan><tspan x="167.64" textLength="59.58" lengthAdjust="spacingAndGlyphs" fill="#f0b429">2 warning</tspan><tspan x="227.22" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  in 1 file · 3 of 12 rules fired</tspan></text>
+<text class="ln" y="492" font-size="11" xml:space="preserve" style="animation-delay:2975ms"><tspan x="22.00" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Why each rule exists:</tspan><tspan x="161.02" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md</tspan></text>
+<text class="ln" y="508" font-size="11" xml:space="preserve" style="animation-delay:3030ms"><tspan x="22.00" textLength="105.92" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Gate this in CI:</tspan><tspan x="127.92" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> llm-audit scan --fail-on error  </tspan><tspan x="346.38" textLength="198.60" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">(or --sarif for code scanning)</tspan></text>
 </svg>
