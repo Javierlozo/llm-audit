@@ -102,7 +102,7 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
 // What code does this describe? A report without an answer is a screenshot.
 function provenanceLine(repo) {
   if (!repo) {
-    return `<p class="sub">Not a git checkout — this report cannot name the ` +
+    return `<p class="sub">Not a git checkout, so this report can't name the ` +
       `revision it describes.</p>`;
   }
   const dirty = repo.dirty

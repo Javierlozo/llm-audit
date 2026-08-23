@@ -24,7 +24,7 @@ Run an `llm-audit` scan when **any** of these are true:
 - The user explicitly asks for a security audit, prompt-injection
   check, or OWASP LLM Top 10 review
 
-If you are uncertain whether code is LLM-integrated, scan it anyway.
+If you're uncertain whether code is LLM-integrated, scan it anyway.
 The scan is fast and the cost of a false negative (shipping a real
 prompt-injection vulnerability) is much higher than the cost of an
 extra scan.
@@ -38,7 +38,7 @@ contract (`schemaVersion: 1`) you can rely on:
 npx llm-audit scan --json <changed-paths>
 ```
 
-If `llm-audit` is not yet installed in the project:
+If `llm-audit` isn't yet installed in the project:
 
 ```bash
 npm i -D llm-audit

@@ -1,14 +1,14 @@
-# `llm-audit` — Project Brief
+# `llm-audit`. Project Brief
 
 > Static analysis for **TypeScript and JavaScript** LLM-application code. OWASP
 > LLM Top 10, at commit time. A complement to Semgrep's `p/ai-best-practices`
-> for the TS/JS ecosystem the upstream pack does not cover.
+> for the TS/JS ecosystem the upstream pack doesn't cover.
 
 ## Problem
 
 AI coding assistants (Claude, Cursor, Kiro, Copilot) now write a substantial
 share of new application code. They reproduce a predictable set of security
-failures that existing SAST tools were not built to catch in TypeScript or
+failures that existing SAST tools weren't built to catch in TypeScript or
 JavaScript LLM apps:
 
 - User input flowing into the LLM `system` role (Anthropic, OpenAI, Vercel AI SDK)
@@ -21,9 +21,9 @@ JavaScript LLM apps:
 - Retrieval-augmented contexts that mix untrusted document text into the
   `system` role
 
-The most relevant existing rule pack — Semgrep's official
-[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices) —
-is **Python-only for LLM-app code**. Its 27 rules break down as 13 Python rules
+The closest thing that already exists is Semgrep's official
+[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices),
+and it's **Python-only for LLM-app code**. Its 27 rules break down as 13 Python rules
 (LangChain + Python provider SDKs), 11 generic config rules (MCP, Claude Code
 settings, IDE configs), and 3 Bash hook rules. **Zero JavaScript or TypeScript
 rules.** Run it against a Next.js + Vercel AI SDK repo and it returns nothing.
@@ -46,12 +46,12 @@ same repo and you cover the LLM Top 10 across both halves of the ecosystem.
 
 The rule pack is the product; the CLI is how it explains itself. `scan` renders
 findings for a human, `--json` and `--sarif` for machines, `--html` writes a
-shareable report, and `rules <id>` teaches one rule in full — each rule's
+shareable report, and `rules <id>` teaches one rule in full, each rule's
 worked fix being the pack's own `safe.*` fixture, which the suite asserts stays
 silent on every commit. Generic security concerns
 (generic XSS, SQLi, secret scanning, dependency CVEs) are explicitly delegated
 to the tools that already do them well (Semgrep `p/owasp-top-ten`, gitleaks,
-npm audit, Socket.dev). We do not reimplement those.
+npm audit, Socket.dev). We don't reimplement those.
 
 For the full empirical comparison against `p/ai-best-practices` and other tools,
 see [`COMPETITIVE-LANDSCAPE.md`](./COMPETITIVE-LANDSCAPE.md).
@@ -62,18 +62,18 @@ Each rule maps to an OWASP LLM Top 10 entry, ships with a vulnerable + safe
 fixture, and includes a "why an AI assistant tends to write this" note in
 `docs/RULES.md`.
 
-1. **LLM01 — Prompt Injection: untrusted input in `system` role** (v0 ✅)
-2. **LLM01 — User input concatenated into a prompt template without separator** (v0 ✅)
-3. **LLM02 — Insecure Output Handling: model output to dangerous sink** (v0 ✅)
-4. **LLM02 — `JSON.parse` on raw model output without schema validation** (v0 ✅)
-5. **LLM06 — Hardcoded LLM API keys in source** (v0 ✅)
-6. **LLM08 — Excessive Agency: tool-calling dispatch without an allowlist** (v0.1 ✅)
-7. **LLM06 — Sensitive context (env, secrets) interpolated into prompt text** (v0.1 ✅)
-8. **LLM01 — Route handler forwards request body to a model without a schema** (v0.1 ✅)
-9. **LLM07 — System prompt leakage: system text inlined in client-visible code** (v1 ✅)
-10. **LLM01 — Retrieval context: untrusted document text mixed into a `system` role** (v1 ✅)
-11. **LLM09 — Overreliance: model output rendered as code or markdown without sanitization** (v1 ✅)
-12. **AI-CODE-SMELL — Streaming response without backpressure / abort handling** (v1 ✅)
+1. **LLM01: Prompt Injection, untrusted input in `system` role** (v0 ✅)
+2. **LLM01: User input concatenated into a prompt template without separator** (v0 ✅)
+3. **LLM02: Insecure Output Handling, model output to dangerous sink** (v0 ✅)
+4. **LLM02: `JSON.parse` on raw model output without schema validation** (v0 ✅)
+5. **LLM06: Hardcoded LLM API keys in source** (v0 ✅)
+6. **LLM08: Excessive Agency, tool-calling dispatch without an allowlist** (v0.1 ✅)
+7. **LLM06: Sensitive context (env, secrets) interpolated into prompt text** (v0.1 ✅)
+8. **LLM01: Route handler forwards request body to a model without a schema** (v0.1 ✅)
+9. **LLM07: System prompt leakage, system text inlined in client-visible code** (v1 ✅)
+10. **LLM01: Retrieval context, untrusted document text mixed into a `system` role** (v1 ✅)
+11. **LLM09: Overreliance, model output rendered as code or markdown without sanitization** (v1 ✅)
+12. **AI-CODE-SMELL: Streaming response without backpressure / abort handling** (v1 ✅)
 
 ## Differentiation
 
@@ -98,10 +98,10 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 ## Non-goals (v1)
 
-- Reinventing generic SAST — Semgrep `p/owasp-top-ten` already does it
-- Slopsquatting / dependency CVE detection — Socket.dev, npq, npm audit own this
-- Runtime LLM red-teaming — Garak, PyRIT, Promptfoo own this
-- Secret scanning — gitleaks owns this; we provide a hook to run it alongside
+- Reinventing generic SAST. Semgrep `p/owasp-top-ten` already does it
+- Slopsquatting / dependency CVE detection, Socket.dev, npq, npm audit own this
+- Runtime LLM red-teaming, Garak, PyRIT, Promptfoo own this
+- Secret scanning, gitleaks owns this; we provide a hook to run it alongside
 
 ## Roadmap (post v1)
 

@@ -1,18 +1,18 @@
 # Contributing
 
-The rule pack is the product. The highest-value contribution is a new rule —
-or a fix to an existing one that misfires.
+The rule pack is the product. The most useful thing you can contribute is a
+new rule, or a fix to one that misfires.
 
 ## The shape of a rule contribution
 
 Every rule ships as four things. A PR missing any of them will be asked for the
 rest before review.
 
-1. **`rules/<rule-id>.yaml`** — one rule per file, filename matching the rule
+1. **`rules/<rule-id>.yaml`**, one rule per file, filename matching the rule
    ID. `languages` must include `typescript` and `javascript`.
-2. **`test/fixtures/<rule-id>/vulnerable.ts`** — code the rule must flag, with a
-   comment on each match explaining why it is dangerous.
-3. **`test/fixtures/<rule-id>/safe.ts`** — the corrected version of the same
+2. **`test/fixtures/<rule-id>/vulnerable.ts`**, code the rule must flag, with a
+   comment on each match explaining why it's dangerous.
+3. **`test/fixtures/<rule-id>/safe.ts`**, the corrected version of the same
    code. The rule must produce **zero** findings here. This file is what keeps
    the pack usable; a rule without a safe fixture is a rule nobody can trust.
 4. **A row in [`docs/RULES.md`](docs/RULES.md)** with the OWASP LLM Top 10
@@ -24,14 +24,14 @@ Then:
 npm test    # every rule fires on vulnerable/, stays silent on safe/
 ```
 
-Green suite, or it does not merge.
+Green suite, or it doesn't merge.
 
 ## What makes a good rule here
 
 `llm-audit` runs in a pre-commit hook. A noisy rule gets the whole tool
 uninstalled, so the bar is deliberately conservative:
 
-- **Map it to an OWASP LLM Top 10 entry.** If it does not map, it probably
+- **Map it to an OWASP LLM Top 10 entry.** If it doesn't map, it probably
   belongs in a general-purpose SAST pack instead.
 - **Prefer false negatives to false positives.** Missing a variant is
   recoverable. Flagging correct code trains people to ignore the output.
@@ -40,14 +40,14 @@ uninstalled, so the bar is deliberately conservative:
   [`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md).
 - **Match real shapes.** Rules are written against patterns that actually
   appear in Vercel AI SDK, OpenAI / Anthropic JS SDK, and Next.js route handler
-  code — not hypotheticals.
+  code, not hypotheticals.
 - **Write a `message` that fixes the bug.** State the risk, then the concrete
-  remediation. It is read by humans in a terminal and by agents through
-  `--json`, and it is often the only documentation anyone sees.
+  remediation. It's read by humans in a terminal and by agents through
+  `--json`, and it's often the only documentation anyone sees.
 
 The reasoning behind the existing rules is in
 [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md). Read it before
-proposing a new one — it explains why each pattern keeps getting generated.
+proposing a new one, it explains why each pattern keeps getting generated.
 
 ## Reporting a false positive
 
@@ -57,7 +57,7 @@ as bugs, not as tuning requests.
 
 ## False negatives
 
-Also an issue, not a security report — see [`SECURITY.md`](SECURITY.md). A
+Also an issue, not a security report, see [`SECURITY.md`](SECURITY.md). A
 snippet the rule *should* have caught is ideal, since it becomes a fixture.
 
 ## Changing the JSON envelope
@@ -86,7 +86,7 @@ npm test
 node src/cli.mjs demo       # see the whole pack fire against the fixtures
 ```
 
-No build step and no runtime dependencies — Semgrep is an optional peer
+No build step and no runtime dependencies. Semgrep is an optional peer
 dependency, installed separately.
 
 ## License

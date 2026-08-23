@@ -8,11 +8,11 @@
 ## TL;DR
 
 The TypeScript / JavaScript niche for OWASP-LLM-Top-10 static analysis is
-**actually open**. The strongest alternative — Semgrep's official
-`p/ai-best-practices` — is Python-only for LLM-app code, with **0 JS/TS rules**
+**actually open**. The strongest alternative is Semgrep's official
+`p/ai-best-practices`, is Python-only for LLM-app code, with **0 JS/TS rules**
 out of 27 total. Other OSS competitors (`agent-audit`, `llm-sast-scanner`)
-target Python or are not LLM-app-specific. Commercial vendors (Snyk, Checkmarx,
-Veracode, Sonar, CodeQL/GHAS) do not publicly market a first-party LLM Top 10
+target Python or aren't LLM-app-specific. Commercial vendors (Snyk, Checkmarx,
+Veracode, Sonar, CodeQL/GHAS) don't publicly market a first-party LLM Top 10
 rule pack. Runtime guardrail tools (Lakera, Protect AI, Garak, Promptfoo eval)
 are a different category and out of scope.
 
@@ -72,7 +72,7 @@ fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 ### `HeadyZhang/agent-audit`
 
 - **Distribution:** PyPI (`pip install agent-audit`), Python-based scanner.
-- **Languages:** Python only — sample reports show `agent.py` files, the
+- **Languages:** Python only, sample reports show `agent.py` files, the
   builtin rules directory contains rule files keyed to LangChain, CrewAI,
   AutoGen, LangGraph, Pydantic AI, MCP server patterns.
 - **Scope:** AI agent frameworks and MCP infrastructure. 53 rules mapped to
@@ -88,7 +88,7 @@ fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
   prompt an LLM agent to perform taint analysis. The agent runs the analysis;
   the project supplies the rubric.
 - **Scope:** General-purpose SAST (SQL injection, XSS, JWT, IDOR, etc.), not
-  LLM-application-specific. Multi-language in theory because it is a prompt,
+  LLM-application-specific. Multi-language in theory because it's a prompt,
   not a parser.
 - **Verdict:** **Different category.** Not a Semgrep-style ruleset; not LLM-app
   specific.
@@ -115,7 +115,7 @@ fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 ### Generic SAST vendors with no public LLM-Top-10 rule pack
 
 - **Snyk Code, Checkmarx, Veracode, Sonar, CodeQL / GitHub Advanced Security**
-  — none publicly market a first-party "OWASP LLM Top 10" rule pack as of
+ , none publicly market a first-party "OWASP LLM Top 10" rule pack as of
   April 2026. They cover generic OWASP Top 10 well; LLM-specific rules are
   not branded or shipped as a discoverable pack.
 
@@ -142,7 +142,7 @@ fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 ## Out of scope (different category)
 
 These are LLM security tools but they target **runtime** behavior, not source
-code at commit time. They are not competitors to `llm-audit`; they are
+code at commit time. They aren't competitors to `llm-audit`; they're
 complements run at a different stage.
 
 | Tool | What it does | Static or runtime |
@@ -172,10 +172,10 @@ After all of the above, the contested ground is small and clear:
    Lower friction than installing a separate Python-based scanner, especially
    in a TS/JS-only repo.
 
-Honest framing: `llm-audit` is **not** a category-creating product. It is a
+Honest framing: `llm-audit` is **not** a category-creating product. It's a
 **well-positioned complement** to `p/ai-best-practices`, occupying the
-TypeScript / JavaScript LLM-app niche the upstream pack does not cover. That
-positioning is empirically defensible — running Semgrep's pack against a TS/JS
+TypeScript / JavaScript LLM-app niche the upstream pack doesn't cover. That
+positioning is empirically defensible, running Semgrep's pack against a TS/JS
 fixture set produces zero hits, and `llm-audit` produces 40.
 
 The right pitch is "the TS/JS half of the LLM-Top-10 SAST story," not "I

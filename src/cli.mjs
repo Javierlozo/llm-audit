@@ -146,7 +146,7 @@ async function fetchLatestVersion() {
 function ensureSemgrep() {
   const r = spawnSync("semgrep", ["--version"], { stdio: "ignore" });
   if (r.status !== 0) {
-    console.error("error: `semgrep` is not installed or not on PATH.");
+    console.error("error: `semgrep` isn't installed, or isn't on your PATH.");
     console.error("install: `brew install semgrep` or `pipx install semgrep`");
     process.exit(127);
   }
@@ -610,7 +610,7 @@ function renderHuman(envelope, meta = {}) {
     );
     console.log("");
     console.log(
-      `${c.dim}To see what these rules catch on intentionally vulnerable code:${c.reset}`
+      `${c.dim}To see what these rules catch on deliberately vulnerable code:${c.reset}`
     );
     console.log("  npx llm-audit demo");
     return;
@@ -914,7 +914,7 @@ function cmdScan(args) {
   // ignoring flags the user typed.
   if (outputFormat === "sarif" && (ruleFilter.size || minSeverity || htmlPath)) {
     process.stderr.write(
-      "--sarif cannot be combined with --rule, --severity, or --html.\n" +
+      "--sarif can't be combined with --rule, --severity, or --html.\n" +
         "run the scan twice, or filter the SARIF downstream.\n"
     );
     process.exit(2);
@@ -1422,7 +1422,7 @@ async function cmdInit(args) {
       );
     }
   } else {
-    console.log("husky is NOT installed. The pre-commit hook will not run yet.");
+    console.log("husky isn't installed yet, so the pre-commit hook won't run.");
     console.log("  to wire it up:");
     console.log("    npm i -D husky");
     console.log("    npm pkg set scripts.prepare='husky'");
@@ -1477,7 +1477,7 @@ async function cmdUninstall(args) {
   }
 
   if (removable.length === 0 && kept.length === 0) {
-    console.log("Nothing to remove: llm-audit is not installed in this project.");
+    console.log("Nothing to remove. llm-audit isn't installed in this project.");
     return;
   }
 
@@ -1492,7 +1492,7 @@ async function cmdUninstall(args) {
   for (const item of kept) {
     console.log("");
     console.log(`Leaving ${displayPath(item.path)} alone.`);
-    console.log("  it has been edited since llm-audit wrote it; remove it by hand if you want it gone.");
+    console.log("  it's been edited since llm-audit wrote it. remove it by hand if you want it gone.");
   }
 
   if (dryRun || removable.length === 0) return;
@@ -1603,7 +1603,7 @@ async function cmdDoctor() {
     status(
       "demo fixtures bundled",
       "warn",
-      "`llm-audit demo` will not work; reinstall the package"
+      "`llm-audit demo` won't work; reinstall the package"
     );
   }
   // templates
@@ -1613,7 +1613,7 @@ async function cmdDoctor() {
     status(
       "templates bundled",
       "warn",
-      "`llm-audit init` will not work; reinstall the package"
+      "`llm-audit init` won't work; reinstall the package"
     );
   }
 
@@ -1643,9 +1643,9 @@ async function cmdDoctor() {
     );
   } else if (existsSync(join(cwd, ".husky", "pre-commit"))) {
     status(
-      "husky is not installed, but a pre-commit hook is",
+      "husky isn't installed, but a pre-commit hook is",
       "warn",
-      "the hook will not run: npm i -D husky && " +
+      "the hook won't run: npm i -D husky && " +
         "npm pkg set scripts.prepare='husky' && npm run prepare"
     );
   } else {

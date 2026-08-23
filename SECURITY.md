@@ -17,16 +17,16 @@ npm rather than as patches to older lines.
 
 ## Reporting a vulnerability
 
-**Do not open a public issue for a security report.**
+**Don't open a public issue for a security report.**
 
 Use GitHub's private reporting:
 [**Report a vulnerability**](https://github.com/Javierlozo/llm-audit/security/advisories/new).
-If that is unavailable to you, reach out via [luislozoya.com](https://www.luislozoya.com).
+If that's unavailable to you, reach out via [luislozoya.com](https://www.luislozoya.com).
 
 Please include:
 
 - what an attacker can do, and what they need in order to do it
-- a minimal reproduction — ideally a repo or file that triggers the behavior
+- a minimal reproduction, ideally a repo or file that triggers the behavior
 - the `llm-audit` version (`npx llm-audit --version`) and Semgrep version
 
 You will get an acknowledgement within 72 hours and an assessment within 7
@@ -43,15 +43,15 @@ Advisory. Credit is given by default; say so if you would rather not be named.
 - Supply-chain issues in how the package is built, published, or verified
 - Privilege escalation through the installed git hook
 
-## What is not in scope
+## What isn't in scope
 
-These are real feedback, and welcome — as normal public issues, not security
+These are real feedback, and welcome, as normal public issues, not security
 reports:
 
-- **False negatives.** A rule missing a vulnerable pattern is a rule bug. It is
+- **False negatives.** A rule missing a vulnerable pattern is a rule bug. It's
   the expected state of any SAST tool, not a vulnerability in this one.
 - **False positives.** Same: open an issue with the code that misfired.
-- Vulnerabilities in Semgrep itself — report those to
+- Vulnerabilities in Semgrep itself, report those to
   [Semgrep](https://github.com/semgrep/semgrep/security).
 - Findings that require an attacker to already control the machine running the
   scan.
@@ -59,6 +59,6 @@ reports:
 ## Scope of the guarantee
 
 `llm-audit` is a lint pass, not a proof of security. A clean scan means the
-twelve shipped rules found nothing — not that the code is free of LLM-related
-vulnerabilities. It is one layer among code review, dependency scanning, secret
-scanning, and runtime guardrails. Do not represent a green run as an audit.
+twelve shipped rules found nothing, not that the code is free of LLM-related
+vulnerabilities. It's one layer among code review, dependency scanning, secret
+scanning, and runtime guardrails. Don't represent a green run as an audit.

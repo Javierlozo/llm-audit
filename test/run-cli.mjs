@@ -271,7 +271,7 @@ check("doctor warns when a hook is installed that cannot run", () => {
     writeFileSync(join(dir, ".husky", "pre-commit"), "npx llm-audit scan\n");
     const r = run(["doctor"], { cwd: dir });
     assert(
-      /\[warn\].*husky is not installed, but a pre-commit hook is/.test(r.stdout),
+      /\[warn\].*husky isn't installed, but a pre-commit hook is/.test(r.stdout),
       "a hook with no husky to run it must warn"
     );
   });
@@ -558,7 +558,7 @@ if (!hasSemgrep()) {
   check("--sarif refuses to pretend it applied filters", () => {
     const r = run(["scan", "--sarif", "--rule", "hardcoded-llm-api-key", "."]);
     assertEqual(r.status, 2, "exit code");
-    assert(/cannot be combined/.test(r.stderr), "expected an explanatory error");
+    assert(/can't be combined/.test(r.stderr), "expected an explanatory error");
   });
 
   // --- scan --fail-on: the CI exit-code policy -----------------------------

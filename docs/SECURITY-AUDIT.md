@@ -1,6 +1,6 @@
-# `llm-audit` — Self-Audit
+# `llm-audit`, Self-Audit
 
-> A static-analysis tool for OWASP LLM Top 10 should not itself be sloppy
+> A static-analysis tool for OWASP LLM Top 10 shouldn't itself be sloppy
 > about its own threat surface. This document is the running self-review
 > of the `llm-audit` codebase: what was found at each audit, what was
 > fixed, what was deemed acceptable, and the reasoning.
@@ -16,13 +16,13 @@
 
 1. Reads YAML rule files bundled in the package.
 2. Spawns the `semgrep` binary as a peer dependency.
-3. Writes template files into the user's repo on `init` — a husky
+3. Writes template files into the user's repo on `init`: a husky
    pre-commit hook, a GitHub Action workflow, and (with `--skill`) a
    project-local Claude Code skill file.
 4. Makes one outbound HTTPS request, only when the user runs `doctor`,
    to check the npm registry for newer versions.
 
-There is no `postinstall` script, no remote configuration loaded at
+There's no `postinstall` script, no remote configuration loaded at
 runtime, no telemetry, and no background network activity. The risk
 surface is therefore narrow:
 
@@ -40,7 +40,7 @@ surface is therefore narrow:
   every `npm install` already makes.
 - **Supply chain**: dependencies, install scripts, files manifest.
 
-## Findings — initial audit (v0.0.1, fixed in v0.0.2)
+## Findings, initial audit (v0.0.1, fixed in v0.0.2)
 
 ### 1. `cmdInit` overwrote existing files silently
 
@@ -104,7 +104,7 @@ git diff --cached --name-only --diff-filter=ACMR -z |
   xargs -0 -r npx --no-install llm-audit scan --
 ```
 
-NUL bytes cannot appear in filenames, so the pipeline is closed against
+NUL bytes can't appear in filenames, so the pipeline is closed against
 filename-injection edge cases. The `--` at the end pairs with finding
 #2 to lock semgrep flag interpretation.
 
@@ -162,7 +162,7 @@ but documenting the behavior is still a courtesy to adopters.
 **Fix:** Added a one-paragraph callout under the install command in
 the README and a link to this audit.
 
-## Findings — re-audit (v0.0.9, fixed in v0.0.10)
+## Findings, re-audit (v0.0.9, fixed in v0.0.10)
 
 The 0.0.9 re-audit covered every code path added since the initial
 audit: `cmdDemo`, `cmdDoctor`, `cmdScan --json` and `--sarif`,
@@ -205,11 +205,11 @@ The husky pre-commit template uses `npx --no-install llm-audit scan`,
 which refuses to silently fetch the package from the registry if it
 isn't already in `node_modules`. The CI workflow template uses bare
 `npx llm-audit scan`, which will fetch the latest published version
-from the registry on every run if the user has not added `llm-audit`
+from the registry on every run if the user hasn't added `llm-audit`
 to their `devDependencies`.
 
-This is intentional — the workflow is meant to "just work" in CI
-without requiring the user to commit a lockfile entry — but it does
+This is intentional, the workflow is meant to "just work" in CI
+without requiring the user to commit a lockfile entry, but it does
 mean the user's CI is implicitly trusting "whatever `llm-audit`
 version exists on npm right now" rather than a version they have
 reviewed. For a security tool's own template, the gap relative to the
@@ -231,14 +231,14 @@ The version-check helper validates only that the registry response
 contains a `version` field of type string. A hostile registry response
 that returned a non-semver string (e.g., `"latest"` or an emoji) would
 flow into `compareSemver`, which uses `parseInt(n, 10) || 0` and would
-resolve every segment to zero. The user would be told they are "up to
-date" and the code path would not produce any further side effect.
+resolve every segment to zero. The user would be told they're "up to
+date" and the code path wouldn't produce any further side effect.
 
 The implicit trust model here is that the npm registry is the trust
-root for the entire package's distribution: if it is hostile, it can
+root for the entire package's distribution: if it's hostile, it can
 serve a malicious tarball directly, and a stricter `version` check
 buys nothing. Documenting that reasoning inline is more useful than
-adding validation that does not change the threat model.
+adding validation that doesn't change the threat model.
 
 **Fix:** Added a comment in `fetchLatestVersion` explaining the
 intentionally shallow validation and the trust assumption.
@@ -274,19 +274,19 @@ the user already controls their filesystem. Not changed.
 A compromised registry could lie about the latest version (e.g.,
 claim a much higher version exists, prompting the user to upgrade to
 a malicious tarball). This is the same trust assumption that any
-`npm install` already makes — if the registry is compromised, every
-package is compromised. Strengthening this single call would not
+`npm install` already makes, if the registry is compromised, every
+package is compromised. Strengthening this single call wouldn't
 meaningfully change the attacker's leverage. Not addressed.
 
 ## What the project does right
 
 - **Zero direct dependencies.** `package.json` lists only an optional
-  peer dependency on `semgrep`. There is no transitive npm dependency
+  peer dependency on `semgrep`. There's no transitive npm dependency
   tree to compromise.
 - **No `postinstall` / `preinstall` / `prepare` scripts.** Installing
-  the package does not execute any of the package's code.
+  the package doesn't execute any of the package's code.
 - **`spawnSync` with array arguments.** All subprocess invocations use
-  the array form, never the shell form. There is no shell
+  the array form, never the shell form. There's no shell
   interpolation in any subprocess invocation made by the CLI.
 - **Restrictive `files` manifest.** The published tarball includes
   only `src/`, `rules/`, `templates/`, `test/fixtures/` (needed by
@@ -296,7 +296,7 @@ meaningfully change the attacker's leverage. Not addressed.
   makes is the on-demand npm-registry version check in `doctor`, with a
   hardcoded URL, a 3-second timeout, and no user input in the URL or
   headers. `scan`, `init`, `demo`, and `rules` perform no network
-  activity. There is no telemetry, no remote-config fetch, and no
+  activity. There's no telemetry, no remote-config fetch, and no
   exfiltration path.
 - **2FA + WebAuthn passkey on npm publishing.** Account-takeover via
   password leak is closed; publishing requires a hardware-bound

@@ -1,43 +1,48 @@
 # Rules
 
-Each rule in `rules/` maps to an entry in the [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/),
-ships with a vulnerable + safe fixture in `test/fixtures/<rule-id>/`, and includes
-a short note on **why an AI coding assistant tends to write this pattern**.
+Every rule in `rules/` maps to an entry in the [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/),
+ships with a vulnerable and a safe fixture in `test/fixtures/<rule-id>/`, and
+carries a short note on **why an AI coding assistant tends to write this
+pattern**.
 
-That last note is intentional. The rules exist because AI assistants reproduce
-these shapes regularly, and naming the failure mode is part of the value.
+That note is deliberate. These rules exist because assistants keep producing
+the same shapes, and naming the failure mode is half the value.
+
+The CLI reads this file at run time. `llm-audit rules <rule-id>` prints an
+entry, and the HTML report renders the same text, so what you read here is what
+a developer sees when a rule fires.
 
 ## Rule index
 
-Twelve shipped rules. Jump to any of them for what it catches, why an AI
-assistant tends to write the pattern, and the fix.
+Twelve rules. Jump to any of them for what it catches, why an AI assistant
+tends to write that pattern, and the fix.
 
 | Rule | OWASP | CWE |
 |---|---|---|
-| [`untrusted-input-in-system-prompt`](#untrusted-input-in-system-prompt) | LLM01 — Prompt Injection | CWE-77, CWE-94 |
-| [`untrusted-input-concatenated-into-prompt-template`](#untrusted-input-concatenated-into-prompt-template) | LLM01 — Prompt Injection | CWE-77 |
-| [`untrusted-retrieval-context-in-system-role`](#untrusted-retrieval-context-in-system-role) | LLM01 — Prompt Injection | CWE-77, CWE-94 |
-| [`request-body-to-llm-without-schema`](#request-body-to-llm-without-schema) | LLM01 — Prompt Injection | CWE-20, CWE-77 |
-| [`llm-output-insecure-handling`](#llm-output-insecure-handling) | LLM02 — Insecure Output Handling | CWE-79, CWE-94, CWE-78 |
-| [`model-output-parsed-without-schema`](#model-output-parsed-without-schema) | LLM02 — Insecure Output Handling | CWE-20 |
-| [`model-output-rendered-as-markdown-without-sanitization`](#model-output-rendered-as-markdown-without-sanitization) | LLM02 — Insecure Output Handling | CWE-79, CWE-80 |
-| [`hardcoded-llm-api-key`](#hardcoded-llm-api-key) | LLM06 — Sensitive Information Disclosure | CWE-798 |
-| [`secrets-in-prompt-context`](#secrets-in-prompt-context) | LLM06 — Sensitive Information Disclosure | CWE-200, CWE-532 |
-| [`system-prompt-leakage-in-client-bundle`](#system-prompt-leakage-in-client-bundle) | LLM07 — System Prompt Leakage | CWE-200, CWE-540 |
-| [`tool-call-dispatch-without-allowlist`](#tool-call-dispatch-without-allowlist) | LLM08 — Excessive Agency | CWE-470, CWE-77 |
-| [`streaming-response-without-abort-handling`](#streaming-response-without-abort-handling) | LLM10 — Unbounded Consumption | CWE-400, CWE-770 |
+| [`untrusted-input-in-system-prompt`](#untrusted-input-in-system-prompt) | LLM01: Prompt Injection | CWE-77, CWE-94 |
+| [`untrusted-input-concatenated-into-prompt-template`](#untrusted-input-concatenated-into-prompt-template) | LLM01: Prompt Injection | CWE-77 |
+| [`untrusted-retrieval-context-in-system-role`](#untrusted-retrieval-context-in-system-role) | LLM01: Prompt Injection | CWE-77, CWE-94 |
+| [`request-body-to-llm-without-schema`](#request-body-to-llm-without-schema) | LLM01: Prompt Injection | CWE-20, CWE-77 |
+| [`llm-output-insecure-handling`](#llm-output-insecure-handling) | LLM02: Insecure Output Handling | CWE-79, CWE-94, CWE-78 |
+| [`model-output-parsed-without-schema`](#model-output-parsed-without-schema) | LLM02: Insecure Output Handling | CWE-20 |
+| [`model-output-rendered-as-markdown-without-sanitization`](#model-output-rendered-as-markdown-without-sanitization) | LLM02: Insecure Output Handling | CWE-79, CWE-80 |
+| [`hardcoded-llm-api-key`](#hardcoded-llm-api-key) | LLM06: Sensitive Information Disclosure | CWE-798 |
+| [`secrets-in-prompt-context`](#secrets-in-prompt-context) | LLM06: Sensitive Information Disclosure | CWE-200, CWE-532 |
+| [`system-prompt-leakage-in-client-bundle`](#system-prompt-leakage-in-client-bundle) | LLM07: System Prompt Leakage | CWE-200, CWE-540 |
+| [`tool-call-dispatch-without-allowlist`](#tool-call-dispatch-without-allowlist) | LLM08: Excessive Agency | CWE-470, CWE-77 |
+| [`streaming-response-without-abort-handling`](#streaming-response-without-abort-handling) | LLM10: Unbounded Consumption | CWE-400, CWE-770 |
 
 ---
 
 ## Rule reference
 
-Grouped by the release that shipped each rule.
+Grouped by the release each one shipped in.
 
 ### v0 (shipped)
 
 #### `untrusted-input-in-system-prompt`
 
-- **OWASP:** LLM01 — Prompt Injection
+- **OWASP:** LLM01: Prompt Injection
 - **CWE:** CWE-77, CWE-94
 - **Catches:** user-controlled input (`req.body.*`, `req.query.*`, `await req.json()`)
   flowing into the `system` role of an Anthropic, OpenAI, or AI SDK call, either
@@ -50,7 +55,7 @@ Grouped by the release that shipped each rule.
 
 #### `llm-output-insecure-handling`
 
-- **OWASP:** LLM02 — Insecure Output Handling
+- **OWASP:** LLM02: Insecure Output Handling
 - **CWE:** CWE-79, CWE-94, CWE-78
 - **Catches:** the result of an LLM call (`generateText`, `chat.completions.create`,
   `messages.create`) being passed into `eval`, `new Function`, `child_process.exec`,
@@ -63,7 +68,7 @@ Grouped by the release that shipped each rule.
 
 #### `untrusted-input-concatenated-into-prompt-template`
 
-- **OWASP:** LLM01 — Prompt Injection
+- **OWASP:** LLM01: Prompt Injection
 - **CWE:** CWE-77
 - **Catches:** template-literal prompts (`prompt: \`... ${req.body.x} ...\``)
   passed to `generateText` / `streamText` / `generateObject` / `streamObject`,
@@ -77,7 +82,7 @@ Grouped by the release that shipped each rule.
 
 #### `model-output-parsed-without-schema`
 
-- **OWASP:** LLM02 — Insecure Output Handling
+- **OWASP:** LLM02: Insecure Output Handling
 - **CWE:** CWE-20
 - **Catches:** `JSON.parse` invoked on model output (`generateText().text`,
   `chat.completions.create()...content`, etc.) without a zod / valibot schema
@@ -105,7 +110,7 @@ Grouped by the release that shipped each rule.
 
 #### `tool-call-dispatch-without-allowlist`
 
-- **OWASP:** LLM08 — Excessive Agency
+- **OWASP:** LLM08: Excessive Agency
 - **CWE:** CWE-470, CWE-77
 - **Catches:** a model-supplied tool name used as a dynamic index into a handler
   map (`handlers[call.toolName](args)`, `handlers[call.function.name](...)`,
@@ -120,7 +125,7 @@ Grouped by the release that shipped each rule.
 
 #### `secrets-in-prompt-context`
 
-- **OWASP:** LLM06 — Sensitive Information Disclosure
+- **OWASP:** LLM06: Sensitive Information Disclosure
 - **CWE:** CWE-200, CWE-532
 - **Catches:** `process.env.*` interpolated into a `system`, `prompt`, or
   `instructions` field, or into the content of a message entry.
@@ -132,7 +137,7 @@ Grouped by the release that shipped each rule.
 
 #### `request-body-to-llm-without-schema`
 
-- **OWASP:** LLM01 — Prompt Injection
+- **OWASP:** LLM01: Prompt Injection
 - **CWE:** CWE-20, CWE-77
 - **Catches:** taint from `await request.json()` / `.text()` / `.formData()`
   into an LLM call with no zod / valibot parse on the path.
@@ -158,7 +163,7 @@ Grouped by the release that shipped each rule.
 
 #### `system-prompt-leakage-in-client-bundle`
 
-- **OWASP:** LLM07 — System Prompt Leakage
+- **OWASP:** LLM07: System Prompt Leakage
 - **CWE:** CWE-200, CWE-540
 - **Catches:** prompt-shaped constants (`SYSTEM_PROMPT`, `*instruction*`,
   `*persona*`, `*guardrail*`) or literal `system` / `instructions` fields
@@ -173,7 +178,7 @@ Grouped by the release that shipped each rule.
 
 #### `untrusted-retrieval-context-in-system-role`
 
-- **OWASP:** LLM01 — Prompt Injection
+- **OWASP:** LLM01: Prompt Injection
 - **CWE:** CWE-77, CWE-94
 - **Catches:** retrieval-shaped variables (`docs`, `chunks`, `context`,
   `passages`, `matches`) or a joined result set interpolated into the `system`
@@ -186,7 +191,7 @@ Grouped by the release that shipped each rule.
 
 #### `model-output-rendered-as-markdown-without-sanitization`
 
-- **OWASP:** LLM02 — Insecure Output Handling
+- **OWASP:** LLM02: Insecure Output Handling
 - **CWE:** CWE-79, CWE-80
 - **Catches:** `rehype-raw` without `rehype-sanitize`, `allowDangerousHtml`,
   `marked` with `sanitize: false`, and `markdown-it` with `html: true`.
@@ -198,7 +203,7 @@ Grouped by the release that shipped each rule.
 
 #### `streaming-response-without-abort-handling`
 
-- **OWASP:** LLM10 — Unbounded Consumption
+- **OWASP:** LLM10: Unbounded Consumption
 - **CWE:** CWE-400, CWE-770
 - **Catches:** `streamText` / `streamObject` / a streaming SDK call inside a
   request handler with no `abortSignal` or `signal` forwarded.
@@ -215,9 +220,9 @@ Grouped by the release that shipped each rule.
 - **One rule per file** in `rules/<rule-id>.yaml`.
 - **One pair of fixtures** in `test/fixtures/<rule-id>/{vulnerable,safe}.ts`.
 - **Metadata required:**
-  - `owasp-llm` — the LLM Top 10 entry (e.g. `LLM01`)
-  - `category` — short slug
-  - `cwe` — list of CWE IDs
-  - `references` — OWASP / vendor docs
+  - `owasp-llm`: the LLM Top 10 entry (e.g. `LLM01`)
+  - `category`: short slug
+  - `cwe`: list of CWE IDs
+  - `references`: OWASP / vendor docs
 - **Severity:** `ERROR` for OWASP LLM Top 10 sinks, `WARNING` for AI code smells.
 - **Message:** lead with the failure mode, then a Fix paragraph.
