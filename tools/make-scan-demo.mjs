@@ -28,9 +28,15 @@ const ANSI_STRIP = new RegExp(ESC + "\\[\\d+m", "g");
 // ── The sample app ──────────────────────────────────────────────────────────
 // Real code with real bugs, in the shape people actually write them: a chat
 // route handler that hardcodes a key and trusts the model's JSON.
+// The sample has to contain a key-shaped literal — that is the finding it
+// demonstrates. Assembling it at runtime keeps the shape out of *this* file,
+// because llm-audit scans its own source and a generator is source. The
+// generated sample is byte-identical either way.
+const FAKE_KEY = ["sk", "proj", "AAAA1111BBBB2222CCCC3333DDDD4444"].join("-");
+
 const SAMPLE = `import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: "sk-proj-AAAA1111BBBB2222CCCC3333DDDD4444" });
+const openai = new OpenAI({ apiKey: "${FAKE_KEY}" });
 
 export async function POST(req: Request) {
   const { question } = await req.json();

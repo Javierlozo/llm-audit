@@ -2,7 +2,7 @@
 # the result to GitHub Code Scanning. A security tool that does not run against
 # itself is asking for trust it has not earned.
 #
-# Only `src/` is scanned. `test/fixtures/` is deliberately vulnerable code that
+# `src/` and `tools/` are scanned. `test/fixtures/` is deliberately vulnerable code that
 # exists to prove the rules fire, and uploading it would fill the Security tab
 # with findings that are working as intended.
 name: self-scan
@@ -36,8 +36,8 @@ jobs:
       # `scan --sarif` exits 1 when it finds something. That is correct for a
       # pre-commit gate but wrong here: the findings still need to be uploaded
       # and triaged in the Security tab rather than lost to a failed step.
-      - name: scan src
-        run: node src/cli.mjs scan --sarif src > llm-audit.sarif || true
+      - name: scan src and tools
+        run: node src/cli.mjs scan --sarif src tools > llm-audit.sarif || true
 
       - name: upload sarif
         uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28  # v4
