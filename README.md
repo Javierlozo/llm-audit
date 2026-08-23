@@ -19,9 +19,9 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 <p>
   <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler is flagged for a hardcoded provider key and for parsing model output without a schema, ending in a severity summary" width="820"/>
   <br/>
-  <sub>A real run against a real chat route handler — regenerated from live CLI output by
+  <sub>A real run against a real chat route handler. Generated from live CLI output by
   <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
-  the risk, and the fix. (Motion honours <code>prefers-reduced-motion</code>.)</sub>
+  the risk, and the fix. Motion respects <code>prefers-reduced-motion</code>.</sub>
 </p>
 
 <p>
@@ -48,32 +48,32 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 
 ---
 
-A focused Semgrep rule pack and CLI for the security failure modes that show up
-in TypeScript and JavaScript code when AI coding assistants — and humans —
-integrate LLM features. Runs locally before commits and in CI. Engine is
-[Semgrep](https://semgrep.dev); output is human-readable, JSON, SARIF 2.1.0, or
-a standalone HTML report.
+A Semgrep rule pack and CLI for the security bugs that show up in TypeScript
+and JavaScript when you wire up an LLM. AI assistants write most of these, but
+people write them too. It runs before your commits and in CI. Semgrep is the
+engine. Output is human-readable, JSON, SARIF 2.1.0, or a standalone HTML
+report.
 
-**Status:** the v1 rule set is complete — twelve rules, each with a vulnerable
-and a safe fixture, all green against `npm test`.
+**Status:** the v1 rule set is done. Twelve rules, each with a vulnerable and a
+safe fixture, all green against `npm test`.
 
-- [`docs/RULES.md`](docs/RULES.md) — every rule: what it catches, why an AI
-  assistant writes the pattern, the fix
-- [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) — the long-form rationale
-- [`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) — the other
-  scanners, and the tools that are **not** competitors
-- [`docs/BRIEF.md`](docs/BRIEF.md) — the project pitch
+- [`docs/RULES.md`](docs/RULES.md) - every rule: what it catches, why an AI
+  assistant writes the pattern, and the fix
+- [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) - the long version of the reasoning
+- [`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) - the other
+  scanners, and the ones that aren't competitors at all
+- [`docs/BRIEF.md`](docs/BRIEF.md) - the pitch
 
 ## Why not just `p/ai-best-practices`?
 
-Because it does not scan TypeScript. Semgrep's official AI pack is real and
-good — it is simply Python-first. Run both; they do not overlap.
+Because it doesn't scan TypeScript. Semgrep's official AI pack is good work.
+It's just Python-first. Run both, they don't overlap.
 
 | | `llm-audit` | Semgrep `p/ai-best-practices` |
 |---|---|---|
 | **JS / TS rules** | **12** | **0** of 27 |
 | Language focus | TypeScript, TSX, JavaScript | Python (13), config (11), Bash (3) |
-| Findings on this repo's TS/TSX fixtures | **42** | **0** — every target filtered out before scanning |
+| Findings on this repo's TS/TSX fixtures | **42** | **0**, every target filtered out before scanning |
 | Runs at | pre-commit hook + CI | CI |
 
 Reproduce those numbers yourself in under a minute:
@@ -88,9 +88,10 @@ semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
 npm test
 ```
 
-The full comparison — false-positive rates, output formats, licensing, the
-other OSS scanners, and the commercial landscape — is in
-[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md).
+The full comparison is in
+[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md): false-positive
+rates, output formats, licensing, the other OSS scanners, and the commercial
+tools.
 
 <sub>Built by <a href="https://www.luislozoya.com">Luis Javier Lozoya</a> ·
 <a href="https://www.luislozoya.com/llm-audit">Project page</a> ·
@@ -115,13 +116,12 @@ npx llm-audit demo
 npx llm-audit scan
 ```
 
-That's enough to evaluate whether `llm-audit` is worth adopting. To make
-it permanent, see **Adopt in your project** below.
+That's enough to decide if it's worth keeping. To make it stick, see **Adopt in
+your project** below.
 
 ## Machine-readable output (CI, agents, dashboards)
 
-`scan` supports two machine-readable output formats for non-human consumers
-(and a human-readable HTML report, covered below):
+`scan` has two machine-readable formats, plus the HTML report covered below:
 
 ```bash
 # Versioned JSON envelope (stable schema, schemaVersion: 1).
@@ -139,14 +139,18 @@ npx llm-audit scan --sarif src > findings.sarif
 npx llm-audit scan --html llm-audit-report.html src
 ```
 
-One self-contained HTML file — no scripts, no network, no assets — that opens
-from disk, prints cleanly, and survives being attached to a PR or kept as a CI
-artifact. It groups findings under the rule that explains them and carries, for
-each one: what the rule catches, **why an AI assistant tends to write the
-pattern**, how to fix it, and the pack's own `safe.*` fixture as a worked
-example. That fixture is not illustrative — `npm test` asserts on every commit
-that it produces zero findings, so the fix in the report is a fix that is
-checked.
+One HTML file. No scripts, no network, no external assets. It opens from disk,
+prints cleanly, and survives being attached to a PR or kept as a CI artifact.
+
+It opens with what to fix first and records the branch and commit it's
+describing, including whether the tree was dirty when you ran it. Findings are
+grouped under the rule that explains them, and each rule carries what it
+catches, **why an AI assistant tends to write that pattern**, how to fix it, and
+the pack's own `safe.*` fixture as the worked example.
+
+That last part is the one I'd point at. The fixture isn't an illustration.
+`npm test` asserts on every commit that it produces zero findings, so the fix in
+the report is one that's been checked.
 
 The same material is one command away in the terminal:
 
@@ -163,14 +167,17 @@ npx llm-audit scan --by rule src                      # group by rule, not file
 npx llm-audit scan --compact src                      # one line per finding
 ```
 
-Past 15 findings the terminal switches to compact on its own — the full
-rationale for every hit stops teaching and starts scrolling. Filtered output is
-always labelled as filtered, in the terminal and inside the HTML report, so a
-narrow pass is never mistaken for a clean bill of health.
+Past 15 findings the terminal switches to compact on its own. The full
+rationale for every hit stops teaching and starts scrolling. Compact also folds
+a rule's repeats in a file onto one row, so you get `lines 18, 22, 27` instead
+of three near-identical rows.
 
-Adopting on a repo that already has findings? Print the whole report but
-only fail the build on the severities you are ready to enforce, then tighten
-the level as you burn the backlog down:
+Filtered output always says it's filtered, in the terminal and in the HTML
+report. A narrow pass should never read like a clean bill of health.
+
+Adopting on a repo that already has findings? Print everything, but only fail
+the build on what you're ready to enforce. Tighten it as you burn the backlog
+down:
 
 ```bash
 npx llm-audit scan --fail-on error src   # report all, exit 1 only on errors
@@ -202,37 +209,36 @@ JSON envelope shape:
 }
 ```
 
-By default `scan` exits **0** when there are no findings and **1** when there
-are, regardless of output format. `--fail-on <level>` moves that threshold
-without changing what gets reported.
+By default `scan` exits **0** with no findings and **1** with any, whatever the
+output format. `--fail-on <level>` moves that threshold without changing what
+gets reported.
 
 ## Using with Claude Code, Cursor, or Codex CLI
 
-`llm-audit` is built for the exact problem AI coding assistants quietly
-introduce, so the highest-leverage place to invoke it is from inside the
-assistant itself. Two integration paths.
+Assistants write most of the code these rules were written for, so the best
+place to run this is inside the assistant. Two ways to do it.
 
 ### 1. Install the Claude Code skill (recommended)
 
-Drop a project-local `SKILL.md` into `.claude/skills/llm-audit/` so any
-agent that reads the universal skill format (Claude Code, Cursor, Codex
-CLI, Antigravity, Gemini CLI) picks it up automatically:
+Drop a project-local `SKILL.md` into `.claude/skills/llm-audit/`. Any agent
+that reads the universal skill format picks it up on its own: Claude Code,
+Cursor, Codex CLI, Antigravity, Gemini CLI.
 
 ```bash
 npx llm-audit init --skill        # hook + workflow + skill
 npx llm-audit init --skill-only   # just the skill
 ```
 
-The skill tells the agent **when** to invoke `llm-audit` (when editing
-files that import `openai`, `@anthropic-ai/sdk`, `ai`, `@ai-sdk/*`, etc.),
-**how** to invoke it (`npx llm-audit scan --json`), and **how** to
-interpret each rule's findings with the canonical fix per OWASP entry.
+The skill tells the agent **when** to run it (editing files that import
+`openai`, `@anthropic-ai/sdk`, `ai`, `@ai-sdk/*`), **how** to run it
+(`npx llm-audit scan --json`), and how to read each rule's findings with the
+right fix per OWASP entry.
 
 ### 2. Manual rule for users who don't want the skill file
 
-If you'd rather not commit a `.claude/skills/` file to your repo, paste
-this into your agent rules (`CLAUDE.md`, `.cursorrules`, `AGENTS.md`,
-or your tool's equivalent) instead:
+If you'd rather not commit a `.claude/skills/` file, paste this into your agent
+rules instead (`CLAUDE.md`, `.cursorrules`, `AGENTS.md`, or whatever your tool
+uses):
 
 > Before committing any change that touches LLM-integrated code (imports
 > from `openai`, `@anthropic-ai/sdk`, `ai`, `@ai-sdk/*`, or any file
@@ -244,28 +250,27 @@ or your tool's equivalent) instead:
 > then re-run until the array is empty. Never bypass the rule by
 > suppressing the finding.
 
-Either path works. The skill is a strict superset (more context for the
-agent, automatic loading) but requires the file to live in your repo.
+Either works. The skill gives the agent more context and loads on its own, but
+the file has to live in your repo.
 
-The JSON envelope is a stable contract (`schemaVersion: 1`), so agents
-can rely on the field names without breaking on a future release.
+The JSON envelope is a stable contract (`schemaVersion: 1`), so agents can rely
+on the field names without breaking on a future release.
 
 ## Versions and updates
 
-`llm-audit` does **not** check for updates on every run. No background
-network calls, no daily cache files, no surprise. The trade-off: you
-won't be notified of new versions automatically.
+It doesn't check for updates on every run. No background network calls, no
+daily cache files, nothing you didn't ask for. The trade-off is that you won't
+hear about a new version on your own.
 
-To check whether you're current, run:
+To check where you are:
 
 ```bash
 npx llm-audit doctor
 ```
 
-`doctor` makes one on-demand request to the npm registry and prints
-either `is up to date` or `is out of date (latest is N.N.N)` with the
-upgrade command. Same network call you'd make manually with
-`npm view llm-audit version`, just packaged into the diagnostic.
+`doctor` makes one request to the npm registry and prints either
+`is up to date` or `is out of date (latest is N.N.N)` with the upgrade command.
+It's the same call you'd make yourself with `npm view llm-audit version`.
 
 To upgrade:
 
@@ -275,11 +280,10 @@ npm i llm-audit@latest
 
 ## Adopt in your project
 
-`llm-audit init` writes two things: a husky pre-commit hook (local, runs
-on every commit) and a GitHub Action workflow (CI, runs on PRs and
-pushes). Before writing the local hook, `init` asks for confirmation —
-press Enter to accept the default, type `n` to skip the hook and keep
-just the GitHub Action.
+`llm-audit init` writes two things: a husky pre-commit hook that runs on every
+commit, and a GitHub Action workflow that runs on PRs and pushes. It asks before
+writing the hook, since that one lands in your local commit flow. Press Enter to
+accept, type `n` to skip the hook and keep just the workflow.
 
 ```bash
 npx llm-audit init                     # prompts: Install pre-commit hook? [Y/n]
@@ -292,26 +296,31 @@ npm pkg set scripts.prepare='husky'
 npm run prepare
 ```
 
-Non-interactive callers (CI, scripts, piped stdin) skip the prompt and
-accept the default automatically — no hangs.
+CI, scripts, and piped stdin skip the prompt and take the default, so nothing
+hangs.
 
-Don't run `npx husky init` after `llm-audit init`: it conflicts with the
-pre-commit file `llm-audit init` just wrote. The three lines above use
-husky v9's manual setup, which doesn't have that conflict.
+Don't run `npx husky init` afterwards. It conflicts with the pre-commit file
+`llm-audit init` just wrote. The three lines above are husky v9's manual setup,
+which doesn't have that problem.
 
-`llm-audit init` refuses to overwrite existing files; pass `--force` if
-you really mean it. Threat model and rationale in
+Run `init` twice and it tells you everything's already installed instead of
+failing. It only refuses to overwrite a file it didn't write, and `--force`
+reinstalls from the templates either way. Threat model in
 [`docs/SECURITY-AUDIT.md`](docs/SECURITY-AUDIT.md).
+
+Want it gone? `npx llm-audit uninstall` removes the hook, the workflow, and the
+skill. It only deletes files it can prove it wrote, and tells you what it left
+behind.
 
 ### Pinning the version in CI
 
-The bundled GitHub Action runs `npx llm-audit scan`, which resolves the
-latest published version from npm at workflow run time unless `llm-audit`
-is in your `devDependencies`. The husky pre-commit hook uses
-`npx --no-install` and won't fetch the package implicitly.
+The bundled workflow runs `npx llm-audit scan`, which pulls the latest
+published version at run time unless `llm-audit` is in your `devDependencies`.
+The pre-commit hook uses `npx --no-install`, so it never fetches the package
+behind your back.
 
-If you want CI to use a reviewed version rather than whatever is current
-on the registry, either add it to your dev dependencies:
+If you want CI on a version you've reviewed, either add it to your dev
+dependencies:
 
 ```bash
 npm i -D llm-audit
@@ -325,20 +334,20 @@ npm i -D llm-audit
 
 ## Why
 
-The strongest existing rule pack — Semgrep's official
-[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices) —
-ships 27 rules: 13 Python, 11 generic configs (MCP, Claude Code settings),
-3 Bash hook rules, and **zero JavaScript or TypeScript rules**. Run it
-against a Next.js + Vercel AI SDK repo and it returns nothing.
+The best rule pack out there is Semgrep's official
+[`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices).
+It ships 27 rules: 13 Python, 11 config files (MCP, Claude Code settings),
+3 Bash hooks, and **zero JavaScript or TypeScript**. Point it at a Next.js +
+Vercel AI SDK repo and it comes back with nothing.
 
-The TypeScript / JavaScript LLM-app ecosystem (Vercel AI SDK, OpenAI /
-Anthropic JS SDKs, Next.js route handlers, Server Actions, AI Gateway) is
-genuinely underweighted in the static-analysis tooling that exists today.
-`llm-audit` fills that gap, with each rule mapped explicitly to an
+The TS/JS side of this ecosystem is where a lot of LLM code actually ships:
+Vercel AI SDK, the OpenAI and Anthropic JS SDKs, Next.js route handlers, Server
+Actions, AI Gateway. The static-analysis tooling hasn't caught up. That's the
+gap this fills, with every rule mapped to an
 [OWASP Top 10 for LLM Applications](https://owasp.org/www-project-top-10-for-large-language-model-applications/)
-category.
+entry.
 
-Patterns covered:
+Some of what it catches:
 
 - User input flowing into an LLM `system` role or prompt template
 - Model output piped into `eval`, `dangerouslySetInnerHTML`, or shell
@@ -349,8 +358,7 @@ The full rule list is in [`docs/RULES.md`](docs/RULES.md).
 
 ## Run rules directly with Semgrep (no install needed)
 
-If you don't want to install the package, the rule pack itself is a
-plain Semgrep configuration:
+Don't want the package? The rule pack is a plain Semgrep config:
 
 ```bash
 semgrep --config node_modules/llm-audit/rules .
@@ -365,7 +373,7 @@ entry and backed by a vulnerable + safe fixture in `test/fixtures/<rule-id>/`.
 |---|---|---|
 | `untrusted-input-in-system-prompt` | LLM01 | User input placed into the LLM `system` role |
 | `untrusted-input-concatenated-into-prompt-template` | LLM01 | User input interpolated into a single-string prompt with no role boundary |
-| `untrusted-retrieval-context-in-system-role` | LLM01 | Retrieved documents given system authority — indirect prompt injection |
+| `untrusted-retrieval-context-in-system-role` | LLM01 | Retrieved documents given system authority (indirect prompt injection) |
 | `request-body-to-llm-without-schema` | LLM01 | Raw request body reaching an LLM call with no schema validation at the boundary |
 | `llm-output-insecure-handling` | LLM02 | Model output flows into `eval`, raw HTML, or shell |
 | `model-output-parsed-without-schema` | LLM02 | `JSON.parse` on model output without a schema validator on the path |
@@ -376,22 +384,22 @@ entry and backed by a vulnerable + safe fixture in `test/fixtures/<rule-id>/`.
 | `tool-call-dispatch-without-allowlist` | LLM08 | Model-chosen tool name dispatched without an allowlist |
 | `streaming-response-without-abort-handling` | LLM10 | Streaming call in a request handler with no `signal` forwarded |
 
-Full rationale for each rule — what it catches, **why an AI assistant tends to
-write the pattern**, and the canonical fix — is in [`docs/RULES.md`](docs/RULES.md).
-The long-form writeup lives in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md).
+[`docs/RULES.md`](docs/RULES.md) has the full reasoning for each one: what it
+catches, **why an AI assistant tends to write that pattern**, and the fix. The
+long version is in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md).
 
 ## Project layout
 
 ```
 rules/          Semgrep YAML rules, one per file
-src/cli.mjs     CLI entry: scan, demo, doctor, rules, init
+src/cli.mjs     CLI entry: scan, demo, doctor, rules, init, uninstall
 src/report.mjs  The standalone HTML report
 src/rule-docs.mjs
-                Parses docs/RULES.md — the teaching material both the
+                Parses docs/RULES.md, the material that both the
                 `rules <id>` command and the report render
 templates/      Files installed by `llm-audit init` (husky hook, GH Action)
 test/           Vulnerable + safe fixtures per rule, plus the CLI suite
-tools/          Dev-only: regenerates the animated README hero
+tools/          Dev only: regenerates the README hero and command map
 docs/           RULES.md (rule reference, read at runtime), BRIEF.md (pitch),
                 AI-FAILURE-MODES.md, COMPETITIVE-LANDSCAPE.md, SECURITY-AUDIT.md
 ```
@@ -406,7 +414,7 @@ MIT. See [LICENSE](LICENSE).
 
 ## Trademarks
 
-llm-audit is an independent project and is not affiliated with or endorsed by
+llm-audit is an independent project. It isn't affiliated with or endorsed by
 Semgrep, Inc. Semgrep is a trademark of Semgrep, Inc. References to the Semgrep
-CLI and the `p/ai-best-practices` ruleset are nominative: they describe the
-engine this project runs on and the public ruleset this project complements.
+CLI and the `p/ai-best-practices` ruleset are nominative: they name the engine
+this runs on and the public ruleset it complements.
