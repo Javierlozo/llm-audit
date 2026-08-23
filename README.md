@@ -25,6 +25,10 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 </p>
 
 <p>
+  <img src="assets/commands.svg" alt="What you can run: llm-audit demo before you adopt it, scan while you write, rules for one rule in full, scan --html for a shareable report, init to make it permanent, doctor when something is off" width="820"/>
+</p>
+
+<p>
   <a href="#quickstart">Quickstart</a>
   ·
   <a href="#rules">Rules</a>

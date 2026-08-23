@@ -121,6 +121,29 @@ check("rules lists all twelve shipped rules", () => {
   }
 });
 
+// --- generated assets ------------------------------------------------------
+//
+// assets/commands.svg advertises the command surface in the README. It is
+// generated from `--help`, so a command that gets renamed or removed should
+// break the build rather than leave the README advertising it.
+
+check("the README command map is generated from the current --help", () => {
+  withTempDir((dir) => {
+    const out = join(dir, "commands.svg");
+    const r = spawnSync(
+      process.execPath,
+      [join(PKG_ROOT, "tools", "make-command-map.mjs"), "--out", out],
+      { encoding: "utf8" }
+    );
+    assertEqual(r.status, 0, `generator exit code (${r.stderr.trim()})`);
+    assertEqual(
+      readFileSync(out, "utf8"),
+      readFileSync(join(PKG_ROOT, "assets", "commands.svg"), "utf8"),
+      "assets/commands.svg is stale — run `npm run commands:svg`"
+    );
+  });
+});
+
 // --- published claims must match reality -----------------------------------
 //
 // The README's headline table claims a specific number of findings against the
