@@ -121,6 +121,45 @@ check("rules lists all twelve shipped rules", () => {
   }
 });
 
+// --- published claims must match reality -----------------------------------
+//
+// The README's headline table claims a specific number of findings against the
+// bundled fixtures, and that number is the project's central empirical claim.
+// It had drifted to three different values across three documents before this
+// check existed. Assert the docs against what the tool actually reports.
+
+check("the finding count claimed in the docs matches what demo reports", () => {
+  const r = run(["demo"]);
+  assertEqual(r.status, 0, "demo exit code");
+  const reported = r.stdout.match(/^(\d+) findings/m);
+  assert(reported, "could not find a summary line in demo output");
+  const actual = Number(reported[1]);
+
+  const claimPatterns = [
+    // Prose: "12 rules, 42 matches", "Confirm 42 hits", "flags 42 violations"
+    /\*{0,2}(\d+)\*{0,2} (?:matches|hits|vulnerability matches|violations)\b/g,
+    // The README's headline comparison row, which carries no trailing noun.
+    /Findings on this repo's TS\/TSX fixtures \| \*{0,2}(\d+)\*{0,2}/g,
+  ];
+
+  for (const file of [
+    "README.md",
+    join("docs", "COMPETITIVE-LANDSCAPE.md"),
+    join("docs", "BRIEF.md"),
+    join("docs", "POST-ZERO-HITS.md"),
+  ]) {
+    const text = readFileSync(join(PKG_ROOT, file), "utf8");
+    let seen = 0;
+    for (const pattern of claimPatterns) {
+      for (const m of text.matchAll(pattern)) {
+        seen++;
+        assertEqual(Number(m[1]), actual, `${file} claims a finding count that`);
+      }
+    }
+    assert(seen > 0, `${file} carries no finding-count claim to check anymore`);
+  }
+});
+
 // --- docs/RULES.md is load-bearing -----------------------------------------
 //
 // `rules <id>` and the HTML report both parse docs/RULES.md for their teaching

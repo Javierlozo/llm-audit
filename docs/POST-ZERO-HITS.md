@@ -83,7 +83,7 @@ Same fixture set, same machine:
 ```sh
 git clone https://github.com/Javierlozo/llm-audit.git && cd llm-audit
 semgrep --config p/ai-best-practices test/fixtures/ --metrics=off   # 0 targets
-npm test                                                            # 12 rules, 40 matches
+npm test                                                            # 12 rules, 42 matches
 ```
 
 ## The honest framing

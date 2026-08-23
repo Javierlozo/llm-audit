@@ -69,7 +69,7 @@ good — it is simply Python-first. Run both; they do not overlap.
 |---|---|---|
 | **JS / TS rules** | **12** | **0** of 27 |
 | Language focus | TypeScript, TSX, JavaScript | Python (13), config (11), Bash (3) |
-| Findings on this repo's TS/TSX fixtures | **40** | **0** — every target filtered out before scanning |
+| Findings on this repo's TS/TSX fixtures | **42** | **0** — every target filtered out before scanning |
 | Runs at | pre-commit hook + CI | CI |
 
 Reproduce those numbers yourself in under a minute:
@@ -80,7 +80,7 @@ git clone https://github.com/Javierlozo/llm-audit.git && cd llm-audit
 # Semgrep's AI pack against the same TypeScript fixtures: 0 targets, 0 findings.
 semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
 
-# llm-audit against them: 12 rules, 40 matches, 0 false positives.
+# llm-audit against them: 12 rules, 42 matches, 0 false positives.
 npm test
 ```
 

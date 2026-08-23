@@ -44,7 +44,11 @@ replacement: that pack handles Python LLM apps and AI infrastructure configs
 (MCP, Claude Code hooks); `llm-audit` handles TS/JS LLM apps. Run both in the
 same repo and you cover the LLM Top 10 across both halves of the ecosystem.
 
-The rule pack is the product. The CLI is convenience. Generic security concerns
+The rule pack is the product; the CLI is how it explains itself. `scan` renders
+findings for a human, `--json` and `--sarif` for machines, `--html` writes a
+shareable report, and `rules <id>` teaches one rule in full — each rule's
+worked fix being the pack's own `safe.*` fixture, which the suite asserts stays
+silent on every commit. Generic security concerns
 (generic XSS, SQLi, secret scanning, dependency CVEs) are explicitly delegated
 to the tools that already do them well (Semgrep `p/owasp-top-ten`, gitleaks,
 npm audit, Socket.dev). We do not reimplement those.
@@ -77,7 +81,7 @@ fixture, and includes a "why an AI assistant tends to write this" note in
   `p/ai-best-practices` (the strongest existing alternative) ships 27 rules
   across Python, generic configs, and Bash, with **zero JS/TS coverage**. Run
   it against the `llm-audit` fixtures and it produces 0 findings on the same
-  files where `llm-audit` flags 37 violations across 12 rules. This is the
+  files where `llm-audit` flags 42 violations across 12 rules. This is the
   empirical gap: TypeScript Vercel AI SDK / OpenAI / Anthropic JS / Next.js
   Server Action shapes are simply not covered upstream.
 - **Explicit OWASP LLM Top 10 mapping** in every rule's `metadata.owasp-llm`
@@ -101,6 +105,12 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 ## Roadmap (post v1)
 
+- Taint-mode rules that show the path from untrusted source to sink, rather
+  than pointing at the line where it lands
+- A trust-boundary map of a scanned codebase: which files take untrusted input,
+  which reach a model, which touch a dangerous sink, and where those overlap
+- Baseline / ratchet support so a repo with an existing backlog can adopt the
+  gate and tighten it over time
 - VSCode extension for in-editor rule feedback
 - GitHub App for org-wide posture reporting (which rules fire across which repos)
 - Framework-specific rule packs (Next.js Server Actions, Express middleware, FastAPI deps)
@@ -109,7 +119,8 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 ## Status
 
-Shipped. Twelve rules, the full v1 set, implemented with passing fixtures. Available on
+Shipped, at v0.4.0. Twelve rules, the full v1 set, implemented with passing
+fixtures, plus the standalone HTML report and per-rule teaching command. Available on
 npm as [`llm-audit`](https://www.npmjs.com/package/llm-audit) and on
 GitHub at
 [`github.com/Javierlozo/llm-audit`](https://github.com/Javierlozo/llm-audit).

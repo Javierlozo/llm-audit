@@ -62,7 +62,7 @@ PASS untrusted-input-concatenated-into-prompt-template  vulnerable=3/3  safe=0
 PASS untrusted-input-in-system-prompt                   vulnerable=5/5  safe=0
 ```
 
-40 vulnerability matches caught across 12 rules, 0 false positives on the safe
+42 vulnerability matches caught across 12 rules, 0 false positives on the safe
 fixtures. All TypeScript and TSX targets that `p/ai-best-practices` skipped.
 
 ---
@@ -197,7 +197,7 @@ git clone https://github.com/Javierlozo/llm-audit.git
 cd llm-audit
 semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
 
-# Confirm 40 hits with llm-audit's own pack
+# Confirm 42 hits with llm-audit's own pack
 npm test
 ```
 
