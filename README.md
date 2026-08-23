@@ -1,11 +1,35 @@
 <img src="assets/banner.svg" alt="llm-audit — untrusted input stopped at the authority boundary, before commit" width="100%"/>
 
 <p>
+  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/v/llm-audit?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/dm/llm-audit?style=flat-square&color=CB3837&label=downloads" alt="npm downloads"></a>
+  <a href="https://github.com/Javierlozo/llm-audit/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/Javierlozo/llm-audit/tests.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
+  <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
+</p>
+
+> Static analysis for **TypeScript and JavaScript** LLM-application code.
+> Twelve rules mapped to the OWASP LLM Top 10, run at commit time.
+
+```bash
+brew install semgrep     # the engine, one-time (or: pipx install semgrep)
+npm i -D llm-audit
+npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
+```
+
+<p>
+  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler is flagged for a hardcoded provider key and for parsing model output without a schema, ending in a severity summary" width="820"/>
+  <br/>
+  <sub>A real run against a real chat route handler — regenerated from live CLI output by
+  <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
+  the risk, and the fix. (Motion honours <code>prefers-reduced-motion</code>.)</sub>
+</p>
+
+<p>
   <a href="#quickstart">Quickstart</a>
   ·
   <a href="#rules">Rules</a>
   ·
-  <a href="#why-not-just-paibest-practices">vs. Semgrep</a>
+  <a href="#why-not-just-pai-best-practices">vs. Semgrep</a>
   ·
   <a href="#a-report-you-can-hand-to-someone-else">Report</a>
   ·
@@ -18,39 +42,23 @@
   <a href="docs/RULES.md">Rule Docs</a>
 </p>
 
-<p>
-  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/v/llm-audit?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/dm/llm-audit?style=flat-square&color=CB3837&label=downloads" alt="npm downloads"></a>
-  <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
-  <img src="https://img.shields.io/badge/Node-%E2%89%A518-339933.svg?style=flat-square&logo=nodedotjs&logoColor=white" alt="Node 18+">
-  <a href="https://github.com/Javierlozo/llm-audit/actions/workflows/tests.yml"><img src="https://img.shields.io/github/actions/workflow/status/Javierlozo/llm-audit/tests.yml?branch=main&style=flat-square&label=tests" alt="Tests"></a>
-  <img src="https://img.shields.io/badge/Rules-12-1f6feb.svg?style=flat-square" alt="12 rules">
-  <img src="https://img.shields.io/badge/Output-SARIF_2.1.0-6f42c1.svg?style=flat-square" alt="SARIF 2.1.0">
-  <a href="https://semgrep.dev"><img src="https://img.shields.io/badge/Engine-Semgrep-0a7d77.svg?style=flat-square" alt="Powered by Semgrep"></a>
-  <a href="https://github.com/Javierlozo/llm-audit/stargazers"><img src="https://img.shields.io/github/stars/Javierlozo/llm-audit?style=flat-square&color=yellow" alt="GitHub stars"></a>
-</p>
-
-<p>
-  <b>Built by <a href="https://www.luislozoya.com">luislozoya.com</a></b> — <sub>Shipping AI features without shipping the vulnerabilities</sub>
-  <br/>
-  <a href="https://www.luislozoya.com/llm-audit">Project page</a>
-  ·
-  <a href="https://github.com/Javierlozo/llm-audit/issues">Issues</a>
-  ·
-  <a href="https://www.npmjs.com/package/llm-audit">npm</a>
-</p>
-
 ---
 
-> Static analysis for **TypeScript and JavaScript** LLM-application code.
-> OWASP LLM Top 10 at commit time. A complement to Semgrep's
-> [`p/ai-best-practices`](https://github.com/semgrep/semgrep-rules/tree/develop/ai/ai-best-practices)
-> for the TS/JS ecosystem the upstream pack does not cover.
+A focused Semgrep rule pack and CLI for the security failure modes that show up
+in TypeScript and JavaScript code when AI coding assistants — and humans —
+integrate LLM features. Runs locally before commits and in CI. Engine is
+[Semgrep](https://semgrep.dev); output is human-readable, JSON, SARIF 2.1.0, or
+a standalone HTML report.
 
-A focused Semgrep rule pack and CLI for catching the security failure modes
-that appear in TypeScript and JavaScript code shipped by AI coding assistants
-(and humans) when integrating LLM features. Runs locally before commits and
-in CI.
+**Status:** the v1 rule set is complete — twelve rules, each with a vulnerable
+and a safe fixture, all green against `npm test`.
+
+- [`docs/RULES.md`](docs/RULES.md) — every rule: what it catches, why an AI
+  assistant writes the pattern, the fix
+- [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) — the long-form rationale
+- [`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) — the other
+  scanners, and the tools that are **not** competitors
+- [`docs/BRIEF.md`](docs/BRIEF.md) — the project pitch
 
 ## Why not just `p/ai-best-practices`?
 
@@ -60,16 +68,11 @@ good — it is simply Python-first. Run both; they do not overlap.
 | | `llm-audit` | Semgrep `p/ai-best-practices` |
 |---|---|---|
 | **JS / TS rules** | **12** | **0** of 27 |
-| Language focus | TypeScript, TSX, JavaScript | Python (13), generic config (11), Bash (3) |
+| Language focus | TypeScript, TSX, JavaScript | Python (13), config (11), Bash (3) |
 | Findings on this repo's TS/TSX fixtures | **40** | **0** — every target filtered out before scanning |
-| False positives on the safe fixtures | 0 | n/a |
-| Mapped to | OWASP LLM Top 10 | AI best practices, agent + MCP config hygiene |
-| Install | `npm i -D llm-audit` | `semgrep --config p/ai-best-practices` |
-| Output formats | human, JSON envelope (`schemaVersion: 1`), SARIF 2.1.0 | Semgrep native, SARIF |
 | Runs at | pre-commit hook + CI | CI |
-| License | MIT | LGPL-2.1 (rules) |
 
-Reproduce the top three rows yourself in under a minute:
+Reproduce those numbers yourself in under a minute:
 
 ```sh
 git clone https://github.com/Javierlozo/llm-audit.git && cd llm-audit
@@ -81,28 +84,14 @@ semgrep --config p/ai-best-practices test/fixtures/ --metrics=off
 npm test
 ```
 
-Full methodology, the other OSS scanners, and the commercial landscape are in
-[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) — including the
-tools that are **not** competitors (Lakera, Garak, LLM Guard and friends are
-runtime guardrails, a different stage entirely).
+The full comparison — false-positive rates, output formats, licensing, the
+other OSS scanners, and the commercial landscape — is in
+[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md).
 
-**Status:** the v1 rule set is complete. Twelve rules implemented with
-vulnerable + safe fixtures, all green against `npm test`. See [`docs/RULES.md`](docs/RULES.md)
-for what's shipped and what's planned, [`docs/BRIEF.md`](docs/BRIEF.md) for
-the project pitch, [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md) for
-the long-form rationale behind each rule, and
-[`docs/COMPETITIVE-LANDSCAPE.md`](docs/COMPETITIVE-LANDSCAPE.md) for the
-empirical comparison against `p/ai-best-practices` and other LLM-security
-tooling.
-
-<p>
-  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler is flagged for a hardcoded provider key and for parsing model output without a schema, ending in a severity summary" width="820"/>
-  <br/>
-  <sub>A real run against a real chat route handler — regenerated from live CLI output by
-  <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
-  the risk, and the fix. (Motion honours <code>prefers-reduced-motion</code>.)</sub>
-</p>
-
+<sub>Built by <a href="https://www.luislozoya.com">Luis Javier Lozoya</a> ·
+<a href="https://www.luislozoya.com/llm-audit">Project page</a> ·
+<a href="https://github.com/Javierlozo/llm-audit/issues">Issues</a> ·
+<a href="https://www.npmjs.com/package/llm-audit">npm</a></sub>
 
 ## Quickstart
 
