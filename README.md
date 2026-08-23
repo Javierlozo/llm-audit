@@ -159,6 +159,7 @@ npx llm-audit rules hardcoded-llm-api-key
 ```bash
 npx llm-audit scan --rule hardcoded-llm-api-key src   # one rule
 npx llm-audit scan --severity error src               # errors only
+npx llm-audit scan --by rule src                      # group by rule, not file
 npx llm-audit scan --compact src                      # one line per finding
 ```
 
@@ -181,7 +182,8 @@ JSON envelope shape:
 ```jsonc
 {
   "schemaVersion": 1,
-  "tool": { "name": "llm-audit", "version": "0.4.0" },
+  "tool": { "name": "llm-audit", "version": "0.5.0" },
+  "repo": { "commit": "…", "shortCommit": "01d9ff30", "branch": "main", "dirty": false },
   "scannedPaths": ["src"],
   "summary": { "findings": 0 },
   "findings": [
@@ -318,7 +320,7 @@ npm i -D llm-audit
 …or pin a version directly in the workflow file:
 
 ```yaml
-- run: npx llm-audit@0.4.0 scan
+- run: npx llm-audit@0.5.0 scan
 ```
 
 ## Why

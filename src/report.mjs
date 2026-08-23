@@ -65,8 +65,6 @@ pre{background:var(--code);border:1px solid var(--line);border-radius:8px;
   padding:12px 14px;overflow-x:auto;margin:8px 0 0}
 pre code{background:none;padding:0;font-size:12.5px;white-space:pre}
 .hit{border-top:1px solid var(--line);margin-top:16px;padding-top:14px}
-.hit-loc{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--muted)}
-.hit-loc b{color:var(--ink);font-weight:600}
 .gutter{color:var(--muted);user-select:none}
 a{color:var(--accent)}
 ul.files{list-style:none;padding:0;margin:8px 0 0;
@@ -74,6 +72,22 @@ ul.files{list-style:none;padding:0;margin:8px 0 0;
 ul.files .n{color:var(--muted)}
 footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
   color:var(--muted);font-size:13px}
+.card.zero .n{color:var(--muted);opacity:.55}
+.card.zero .l{opacity:.7}
+.summary{background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  padding:18px 20px;margin:24px 0 0}
+.summary h2{margin:0 0 10px;font-size:15px}
+.summary ol{margin:0;padding-left:20px}
+.summary li{margin:6px 0}
+.summary .why{color:var(--muted)}
+.nav{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;font-size:12.5px}
+.nav a{display:inline-block;border:1px solid var(--line);border-radius:999px;
+  padding:3px 11px;text-decoration:none;color:var(--muted)}
+.hit-loc{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--ink);
+  font-weight:600}
+.hit-loc .ln{color:var(--muted);font-weight:400}
+.ctx{color:var(--muted);opacity:.75}
+.match{color:var(--ink)}
 .note{background:var(--code);border:1px solid var(--line);border-left:3px solid var(--warning);
   border-radius:8px;padding:12px 14px;margin:24px 0 0;font-size:13.5px}
 .clean{background:var(--panel);border:1px solid var(--line);border-radius:12px;
@@ -84,6 +98,53 @@ footer{margin-top:48px;padding-top:20px;border-top:1px solid var(--line);
   a{color:inherit;text-decoration:none}
 }
 `;
+
+// What code does this describe? A report without an answer is a screenshot.
+function provenanceLine(repo) {
+  if (!repo) {
+    return `<p class="sub">Not a git checkout — this report cannot name the ` +
+      `revision it describes.</p>`;
+  }
+  const dirty = repo.dirty
+    ? ` <b>· uncommitted changes present</b>, so this describes a working tree, ` +
+      `not a commit`
+    : "";
+  return (
+    `<p class="sub">${esc(repo.branch || "detached")} @ ` +
+    `<code>${esc(repo.shortCommit || "")}</code>${dirty}</p>`
+  );
+}
+
+// One ordered list of what to do, worst-and-largest first. A reader who does
+// only the first item should have removed the most risk available per unit of
+// work; a reader who reads nothing else should still know where to start.
+function executiveSummary(findings, anchorFor) {
+  const groups = new Map();
+  for (const f of findings) {
+    const g = groups.get(f.ruleId) || { ruleId: f.ruleId, severity: f.severity, n: 0, files: new Set() };
+    g.n++;
+    g.files.add(f.path);
+    if (rank(f.severity) < rank(g.severity)) g.severity = f.severity;
+    groups.set(f.ruleId, g);
+  }
+  const ordered = [...groups.values()]
+    .sort((a, b) => rank(a.severity) - rank(b.severity) || b.n - a.n || a.ruleId.localeCompare(b.ruleId))
+    .slice(0, 3);
+
+  return `<div class="summary">
+  <h2>What to fix first</h2>
+  <ol>
+${ordered
+  .map(
+    (g) =>
+      `    <li><a href="#${esc(anchorFor(g.ruleId))}"><code>${esc(g.ruleId)}</code></a>` +
+      ` <span class="why">— ${g.n} ${esc(g.severity.toLowerCase())}` +
+      `${g.n === 1 ? "" : "s"} across ${g.files.size} file${g.files.size === 1 ? "" : "s"}</span></li>`
+  )
+  .join("\n")}
+  </ol>
+</div>`;
+}
 
 function severityCards(counts, total, fileCount) {
   const cells = [
@@ -96,7 +157,7 @@ function severityCards(counts, total, fileCount) {
   return `<div class="cards">${cells
     .map(
       (c) =>
-        `<div class="card"><div class="n ${c.cls}">${c.n}</div>` +
+        `<div class="card${c.n === 0 ? " zero" : ""}"><div class="n ${c.cls}">${c.n}</div>` +
         `<div class="l">${esc(c.l)}</div></div>`
     )
     .join("")}</div>`;
@@ -132,7 +193,9 @@ export function renderHtmlReport(envelope, opts = {}) {
     generatedAt = new Date().toISOString(),
     displayPath = (p) => p,
     version = envelope?.tool?.version ?? "",
+    readContext = null,
   } = opts;
+  const repo = envelope?.repo || null;
 
   const findings = envelope.findings || [];
   const counts = {};
@@ -156,6 +219,8 @@ export function renderHtmlReport(envelope, opts = {}) {
       a[0].localeCompare(b[0])
   );
 
+  const claimedFileAnchors = new Set();
+
   const fileIndex = [...files]
     .map((p) => ({ p, n: findings.filter((f) => f.path === p).length }))
     .sort((a, b) => b.n - a.n || a.p.localeCompare(b.p));
@@ -173,9 +238,15 @@ export function renderHtmlReport(envelope, opts = {}) {
         `. Other rules may still have findings in this codebase.</p>`
       : "";
 
+  // Stable, collision-free anchors: rule ids are already slug-shaped, file
+  // paths are not, so files are addressed by index.
+  const anchorFor = (ruleId) => `rule-${ruleId}`;
+  const fileAnchor = new Map(fileIndex.map((f, i) => [f.p, `file-${i + 1}`]));
+
   const body = findings.length
     ? `
 ${filterNote}
+${executiveSummary(findings, anchorFor)}
 ${severityCards(counts, findings.length, files.size)}
 
 <h2>Files</h2>
@@ -183,14 +254,22 @@ ${severityCards(counts, findings.length, files.size)}
 ${fileIndex
   .map(
     (f) =>
-      `<li>${esc(displayPath(f.p))} <span class="n">— ${f.n} finding${
-        f.n === 1 ? "" : "s"
-      }</span></li>`
+      `<li><a href="#${esc(fileAnchor.get(f.p))}">${esc(displayPath(f.p))}</a> ` +
+      `<span class="n">— ${f.n} finding${f.n === 1 ? "" : "s"}</span></li>`
   )
   .join("\n")}
 </ul>
 
 <h2>Findings by rule</h2>
+<nav class="nav" aria-label="Jump to a rule">
+${rules
+  .map(
+    ([ruleId, hits]) =>
+      `  <a href="#${esc(anchorFor(ruleId))}">${esc(ruleId)} <b>${hits.length}</b></a>`
+  )
+  .join("\n")}
+</nav>
+
 ${rules
   .map(([ruleId, hits]) => {
     const doc = docs[ruleId] || {};
@@ -199,7 +278,7 @@ ${rules
     const example = (opts.examples || {})[ruleId];
     const owasp = hits[0].owasp || meta.owasp;
     const cwe = (hits[0].cwe && hits[0].cwe.length ? hits[0].cwe : meta.cwe) || [];
-    return `<section class="rule" id="${esc(ruleId)}">
+    return `<section class="rule" id="${esc(anchorFor(ruleId))}">
   <div class="rule-head">
     <span class="badge ${esc(sev)}">${esc(sev)}</span>
     <h3>${esc(ruleId)}</h3>
@@ -229,12 +308,17 @@ ${rules
   </dl>
 ${hits
   .sort((a, b) => a.path.localeCompare(b.path) || a.startLine - b.startLine)
-  .map(
-    (f) => `  <div class="hit">
-    <div class="hit-loc"><b>${esc(displayPath(f.path))}</b>:${esc(f.startLine)}</div>
-    ${snippet(f)}
-  </div>`
-  )
+  .map((f) => {
+    // The first occurrence of a file inside the whole report owns that file's
+    // anchor, so the Files index lands somewhere real.
+    const anchor = fileAnchor.get(f.path);
+    const owns = anchor && !claimedFileAnchors.has(f.path);
+    if (owns) claimedFileAnchors.add(f.path);
+    return `  <div class="hit"${owns ? ` id="${esc(anchor)}"` : ""}>
+    <div class="hit-loc">${esc(displayPath(f.path))}<span class="ln">:${esc(f.startLine)}</span></div>
+    ${snippet(f, readContext)}
+  </div>`;
+  })
   .join("\n")}
 </section>`;
   })
@@ -256,6 +340,7 @@ ${hits
 <header>
   <h1>llm-audit report</h1>
   <p class="sub">${esc(targets)} · ${ruleCount} rules · llm-audit ${esc(version)} · ${esc(stamp)}</p>
+  ${provenanceLine(repo)}
 </header>
 ${body}
 <footer>

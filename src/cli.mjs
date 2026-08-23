@@ -150,11 +150,34 @@ const JSON_SCHEMA_VERSION = 1;
 // thing this pack exists to communicate.
 // ---------------------------------------------------------------------------
 
+// A scan of a real repo takes seconds, and silence for seconds reads as a
+// hang. Braille spinner on a TTY only; erased on completion so nothing is left
+// behind in the transcript, and never written when output is piped.
+function withProgress(label, fn) {
+  if (!process.stdout.isTTY || process.env.NO_COLOR) return fn();
+  const frames = ["\u280b", "\u2819", "\u2839", "\u2838", "\u283c", "\u2834", "\u2826", "\u2827", "\u2807", "\u280f"];
+  let i = 0;
+  const draw = () => {
+    process.stderr.write(`\r${c.dim}${frames[i++ % frames.length]} ${label}${c.reset}`);
+  };
+  draw();
+  const timer = setInterval(draw, 80);
+  try {
+    return fn();
+  } finally {
+    clearInterval(timer);
+    process.stderr.write("\r\u001b[2K");
+  }
+}
+
 function runSemgrepJson(targetPaths) {
   // `--` locks interpretation: any path starting with `-` is a path, not a
   // semgrep flag. Defends against a wrapper or piped input injecting flags
   // via path arguments.
-  const r = spawnSync(
+  const ruleCount = readdirSync(RULES_DIR).filter((f) => f.endsWith(".yaml")).length;
+  const r = withProgress(
+    `scanning ${targetPaths.join(" ")} \u00b7 ${ruleCount} rules`,
+    () => spawnSync(
     "semgrep",
     [
       "--config", RULES_DIR,
@@ -165,6 +188,7 @@ function runSemgrepJson(targetPaths) {
       ...targetPaths,
     ],
     { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+    )
   );
 
   if (r.status !== 0 && r.status !== 1) {
@@ -191,6 +215,48 @@ function runSemgrepJson(targetPaths) {
 // is the most useful part of a finding, and this tool has no account to log in
 // with, so read the span off disk ourselves and fall back to whatever Semgrep
 // gave us.
+// Which code does this report describe? A scan forwarded to a reviewer, or
+// filed as a compliance artifact, is only as useful as its answer to that
+// question. Read it from git when there is a git; degrade silently when there
+// is not, because plenty of scans run on unpacked tarballs and CI checkouts.
+function readProvenance(cwd = process.cwd()) {
+  const git = (args) => {
+    const r = spawnSync("git", args, { cwd, encoding: "utf8" });
+    return r.status === 0 ? (r.stdout || "").trim() : null;
+  };
+  if (git(["rev-parse", "--is-inside-work-tree"]) !== "true") return null;
+  const commit = git(["rev-parse", "HEAD"]);
+  if (!commit) return null; // a repo with no commits yet
+  const status = git(["status", "--porcelain"]);
+  return {
+    commit,
+    shortCommit: commit.slice(0, 8),
+    branch: git(["rev-parse", "--abbrev-ref", "HEAD"]) || null,
+    // A dirty tree means the report describes something no commit captures.
+    // Saying so is the difference between a record and a snapshot.
+    dirty: status !== null && status.length > 0,
+  };
+}
+
+// Read the matched span plus a couple of lines either side. A single matched
+// line is enough to locate a finding and rarely enough to judge it.
+function readContext(path, startLine, endLine, pad = 2) {
+  if (!path || !startLine) return null;
+  try {
+    const all = readFileSync(path, "utf8").split("\n");
+    const from = Math.max(1, startLine - pad);
+    const to = Math.min(all.length, (endLine ?? startLine) + pad);
+    return {
+      from,
+      matchFrom: startLine,
+      matchTo: endLine ?? startLine,
+      lines: all.slice(from - 1, to),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function readSnippet(path, startLine, endLine, fallback) {
   const given = (fallback || "").trim();
   if (given && given !== "requires login") return fallback;
@@ -234,6 +300,8 @@ function buildEnvelope(semgrepOut, targetPaths) {
   return {
     schemaVersion: JSON_SCHEMA_VERSION,
     tool: { name: "llm-audit", version: getVersion() },
+    // Additive since schemaVersion 1: null outside a git checkout.
+    repo: readProvenance(),
     scannedPaths: targetPaths,
     summary: { findings: findings.length },
     findings,
@@ -342,6 +410,30 @@ function displayPath(path, stripPrefix) {
   return rel && !rel.startsWith("..") && rel.length < path.length ? rel : path;
 }
 
+// The matched span in colour, its neighbours dimmed. Context is what turns a
+// line number into something a reader can judge without opening the file.
+function printSnippet(f) {
+  const ctx = readContext(f.path, f.startLine, f.endLine);
+  if (!ctx) {
+    if (!f.lines) return;
+    console.log("");
+    f.lines.replace(/\n+$/, "").split("\n").forEach((line, i) => {
+      const n = String((f.startLine ?? 1) + i).padStart(5);
+      console.log(`  ${c.dim}${n} \u2502${c.reset} ${c.magenta}${line}${c.reset}`);
+    });
+    return;
+  }
+  console.log("");
+  ctx.lines.forEach((line, i) => {
+    const n = ctx.from + i;
+    const matched = n >= ctx.matchFrom && n <= ctx.matchTo;
+    console.log(
+      `  ${c.dim}${String(n).padStart(5)} \u2502${c.reset} ` +
+        (matched ? `${c.magenta}${line}${c.reset}` : `${c.dim}${line}${c.reset}`)
+    );
+  });
+}
+
 // Above this many findings the full rationale stops being a lesson and starts
 // being a wall. Past it we switch to one line per finding and say so, unless
 // the user explicitly asked for --verbose.
@@ -377,6 +469,54 @@ function renderCompact(envelope, meta = {}) {
       );
     }
     console.log("");
+  }
+}
+
+// Grouped by rule instead of by file: the shape you want when you are fixing
+// a class of problem across a codebase rather than cleaning one file.
+function renderByRule(envelope, meta, width) {
+  const byRule = new Map();
+  for (const f of envelope.findings) {
+    if (!byRule.has(f.ruleId)) byRule.set(f.ruleId, []);
+    byRule.get(f.ruleId).push(f);
+  }
+  const rules = [...byRule.entries()].sort(
+    (a, b) =>
+      sevRank(a[1][0].severity) - sevRank(b[1][0].severity) ||
+      b[1].length - a[1].length ||
+      a[0].localeCompare(b[0])
+  );
+
+  for (const [ruleId, hits] of rules) {
+    const first = hits[0];
+    const mark = (SEV_COLOR[first.severity] || SEV_COLOR.INFO)() +
+      (SEV_MARK[first.severity] || SEV_MARK.INFO) + c.reset;
+    console.log("");
+    console.log(
+      `${mark} ${sevTag(first.severity)} ${c.bold}${ruleId}${c.reset}` +
+        `${first.owasp ? `  ${c.yellow}${first.owasp}${c.reset}` : ""}` +
+        `${c.dim}  ${hits.length} occurrence${hits.length === 1 ? "" : "s"}${c.reset}`
+    );
+
+    // The rationale belongs to the rule, so under this grouping it is stated
+    // once by construction rather than by suppression.
+    const [risk, ...rest] = first.message.split(/\n(?=Fix:)/);
+    console.log(wrap(risk, width - 4, "    "));
+    for (const block of rest) {
+      console.log("");
+      console.log(`${c.blue}${wrap(block, width - 4, "    ")}${c.reset}`);
+    }
+
+    for (const f of hits.sort(
+      (a, b) => a.path.localeCompare(b.path) || a.startLine - b.startLine
+    )) {
+      console.log("");
+      console.log(
+        `  ${c.bold}${displayPath(f.path, meta.stripPrefix)}${c.reset}` +
+          `${c.dim}:${f.startLine}${c.reset}`
+      );
+      printSnippet(f);
+    }
   }
 }
 
@@ -417,6 +557,8 @@ function renderHuman(envelope, meta = {}) {
 
   if (meta.compact) {
     renderCompact(envelope, meta);
+  } else if (meta.by === "rule") {
+    renderByRule(envelope, meta, width);
   } else {
     // Group by file so a reader fixes one file at a time, then put the files
     // holding the worst finding first — the top of the report is the work that
@@ -473,14 +615,7 @@ function renderHuman(envelope, meta = {}) {
           }
         }
 
-        if (f.lines) {
-          console.log("");
-          const codeLines = f.lines.replace(/\n+$/, "").split("\n");
-          codeLines.forEach((line, i) => {
-            const n = String((f.startLine ?? 1) + i).padStart(5);
-            console.log(`  ${c.dim}${n} \u2502${c.reset} ${c.magenta}${line}${c.reset}`);
-          });
-        }
+        printSnippet(f);
       }
     }
   }
@@ -508,7 +643,25 @@ function renderHuman(envelope, meta = {}) {
     `${c.bold}${findings.length} finding${findings.length === 1 ? "" : "s"}${c.reset}` +
       `  ${breakdown}` +
       `${c.dim}  in ${fileCount} file${fileCount === 1 ? "" : "s"}` +
-      ` \u00b7 ${ruleIds.size} of ${ruleCount} rules fired${c.reset}`
+      ` \u00b7 ${ruleIds.size} of ${ruleCount} rules fired` +
+      `${meta.elapsedMs ? ` \u00b7 ${(meta.elapsedMs / 1000).toFixed(1)}s` : ""}${c.reset}`
+  );
+
+  // One next action, not a list. The worst rule with the most occurrences is
+  // where a reader gets the most risk removed per unit of work.
+  const worst = [...counts.keys()].sort((a, b) => sevRank(a) - sevRank(b))[0];
+  const ranked = new Map();
+  for (const f of findings.filter((f) => f.severity === worst)) {
+    ranked.set(f.ruleId, (ranked.get(f.ruleId) || 0) + 1);
+  }
+  const [topRule, topCount] = [...ranked.entries()].sort(
+    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+  )[0];
+  console.log(
+    `${c.bold}Start here:${c.reset} ${topRule}` +
+      `${c.dim} \u2014 ${topCount} ${worst.toLowerCase()}` +
+      `${topCount === 1 ? "" : "s"}, the largest cluster.` +
+      `  \`llm-audit rules ${topRule}\`${c.reset}`
   );
   if (meta.filtered) {
     console.log(
@@ -552,6 +705,7 @@ function writeHtmlReport(envelope, htmlPath, targetPaths, filters = {}) {
     ruleMeta: readRuleMeta(RULES_DIR),
     ruleCount: readdirSync(RULES_DIR).filter((f) => f.endsWith(".yaml")).length,
     displayPath: (p) => displayPath(p),
+    readContext: (f) => readContext(f.path, f.startLine, f.endLine),
     version: getVersion(),
   });
   try {
@@ -582,6 +736,7 @@ function cmdScan(args) {
   let density = "auto"; // "auto" | "compact" | "verbose"
   let minSeverity = null; // null | "ERROR" | "WARNING" | "INFO"
   let htmlPath = null;
+  let groupBy = "file"; // "file" | "rule"
   const ruleFilter = new Set();
   const paths = [];
   const FAIL_LEVELS = ["any", "error", "warning", "info", "never"];
@@ -613,6 +768,14 @@ function cmdScan(args) {
         process.exit(2);
       }
       failOn = value;
+    } else if (arg === "--by" || arg.startsWith("--by=")) {
+      const inline = arg.includes("=") ? arg.split("=").slice(1).join("=") : null;
+      const value = needsValue("--by", inline, args[++i]);
+      if (!["file", "rule"].includes(value)) {
+        process.stderr.write("--by expects one of: file, rule\n");
+        process.exit(2);
+      }
+      groupBy = value;
     } else if (arg === "--compact") {
       density = "compact";
     } else if (arg === "--verbose") {
@@ -642,7 +805,7 @@ function cmdScan(args) {
       process.stderr.write(`unknown flag: ${arg}\n`);
       process.stderr.write(
         "supported: --json, --sarif, --html <file>, --rule <id>, --severity <level>,\n" +
-          "           --compact, --verbose, --fail-on <level>. " +
+          "           --by <file|rule>, --compact, --verbose, --fail-on <level>. " +
           "run `llm-audit --help` for usage.\n"
       );
       process.exit(2);
@@ -710,15 +873,19 @@ function cmdScan(args) {
   };
 
   if (outputFormat === "human") {
+    const startedAt = Date.now();
     const envelope = applyFilters(
       buildEnvelope(runSemgrepJson(targetPaths), targetPaths)
     );
+    const elapsedMs = Date.now() - startedAt;
     const compact =
       density === "compact" ||
       (density === "auto" && envelope.findings.length > COMPACT_THRESHOLD);
     renderHuman(envelope, {
       failOn,
       compact,
+      by: groupBy,
+      elapsedMs,
       filtered: Boolean(ruleFilter.size || minSeverity),
       filterLabel: ruleFilter.size
         ? `rule${ruleFilter.size === 1 ? "" : "s"} (${[...ruleFilter].join(", ")})`
@@ -1325,6 +1492,7 @@ SCAN FLAGS
   --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
   --rule <id>                     Only this rule (repeatable, or comma-separated)
   --severity <level>              Only this severity or worse (error|warning|info)
+  --by <file|rule>                Group findings by file (default) or by rule
   --compact                       One line per finding
   --verbose                       Full rationale for every finding
   --fail-on <level>               Exit 1 only at or above this severity

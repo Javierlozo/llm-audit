@@ -361,6 +361,50 @@ if (!hasSemgrep()) {
     );
   });
 
+  check("scan --by rule groups occurrences under one rationale", () => {
+    const r = run([
+      "scan",
+      "--by",
+      "rule",
+      "--verbose",
+      join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+    ]);
+    assertEqual(r.status, 1, "exit code");
+    assert(/3 occurrences/.test(r.stdout), "expected an occurrence count");
+    // The rationale belongs to the rule, so it appears exactly once.
+    const rationales = r.stdout.split("Inline keys leak").length - 1;
+    assertEqual(rationales, 1, "rationale repetitions");
+  });
+
+  check("scan rejects an unknown --by value", () => {
+    const r = run(["scan", "--by", "severity", "."]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/--by expects/.test(r.stderr), "expected a usage message");
+  });
+
+  check("findings carry context lines, not just the matched line", () => {
+    const r = run(["scan", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
+    // The first finding is on line 18; context means its neighbours print too.
+    assert(/^\s+16 \u2502/m.test(r.stdout), "expected a line before the match");
+    assert(/^\s+20 \u2502/m.test(r.stdout), "expected a line after the match");
+  });
+
+  check("the summary names one place to start", () => {
+    const r = run(["scan", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
+    assert(/Start here: hardcoded-llm-api-key/.test(r.stdout), "expected a next action");
+  });
+
+  check("the envelope records which revision was scanned", () => {
+    const r = run(["scan", "--json", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
+    const envelope = JSON.parse(r.stdout);
+    assert("repo" in envelope, "envelope must carry a repo field, even if null");
+    if (envelope.repo) {
+      assert(/^[0-9a-f]{40}$/.test(envelope.repo.commit), "commit must be a full sha");
+      assertEqual(envelope.repo.shortCommit, envelope.repo.commit.slice(0, 8), "shortCommit");
+      assertEqual(typeof envelope.repo.dirty, "boolean", "dirty");
+    }
+  });
+
   check("scan --html writes a self-contained report", () => {
     withTempDir((dir) => {
       const out = join(dir, "nested", "report.html");
@@ -377,6 +421,12 @@ if (!hasSemgrep()) {
       assert(html.includes("hardcoded-llm-api-key"), "report is missing the rule");
       assert(html.includes("Why an AI assistant writes this"), "report is missing the rationale");
       assert(html.includes("The fixed shape, verified"), "report is missing the safe example");
+      assert(html.includes("What to fix first"), "report is missing the executive summary");
+      // Every in-page link must land on something that exists.
+      const ids = new Set([...html.matchAll(/id="([^"]+)"/g)].map((m) => m[1]));
+      for (const [, target] of html.matchAll(/href="#([^"]+)"/g)) {
+        assert(ids.has(target), `report links to a missing anchor: #${target}`);
+      }
       assert(
         !/<(script|iframe)\b/i.test(html),
         "the report must not carry script or iframe content"

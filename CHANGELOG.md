@@ -9,6 +9,24 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Added
+
+- The JSON envelope and the HTML report now record **which revision was
+  scanned** — branch, commit, and whether the working tree was dirty. A report
+  that cannot name the code it describes is a screenshot, not a record.
+- The HTML report opens with **what to fix first**: the three worst-and-largest
+  rule clusters, linked. It also has working navigation — the file index links
+  into the findings, and a jump-nav lists every rule that fired.
+- `scan --by <file|rule>` groups findings by file (default) or by rule. Under
+  rule grouping the rationale is stated once by construction.
+- Findings carry **context lines** either side of the match, in the terminal
+  and in the report. A single matched line locates a finding; its neighbours
+  are what let a reader judge one without opening an editor.
+- The terminal summary names **one place to start** — the worst rule with the
+  most occurrences, with the command to learn it.
+- A progress indicator while semgrep runs, and the elapsed time in the summary.
+  TTY only; piped output is unchanged.
+
 ### Fixed
 
 - A misspelled `--rule` id filtered every real finding away and printed
