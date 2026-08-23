@@ -17,7 +17,15 @@
 // is a vulnerability rather than an annoyance.
 
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, existsSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  readdirSync,
+  rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -111,6 +119,49 @@ check("rules lists all twelve shipped rules", () => {
   ]) {
     assert(r.stdout.includes(id), `rules output is missing '${id}'`);
   }
+});
+
+// --- docs/RULES.md is load-bearing -----------------------------------------
+//
+// `rules <id>` and the HTML report both parse docs/RULES.md for their teaching
+// material. That makes the heading and bullet structure of a Markdown file a
+// runtime contract: if it drifts, both surfaces silently lose their content
+// instead of failing. Assert the contract holds for every shipped rule.
+
+check("every shipped rule has teaching material in docs/RULES.md", () => {
+  const ruleIds = readdirSync(join(PKG_ROOT, "rules"))
+    .filter((f) => f.endsWith(".yaml"))
+    .map((f) => f.replace(/\.yaml$/, ""));
+  assert(ruleIds.length > 0, "no rules found to check");
+
+  // Driven through the CLI rather than the parser, so this fails if either
+  // the docs drift or the command stops rendering them.
+  for (const id of ruleIds) {
+    const r = run(["rules", id]);
+    assertEqual(r.status, 0, `exit code for '${id}'`);
+    for (const section of [
+      "What it catches",
+      "Why an AI assistant writes this",
+      "How to fix it",
+      "The fixed shape",
+    ]) {
+      assert(
+        r.stdout.includes(section),
+        `'${id}' is missing '${section}' — check its section in docs/RULES.md`
+      );
+    }
+    // A heading with nothing under it would satisfy the check above.
+    const body = r.stdout.split("What it catches")[1] || "";
+    assert(body.trim().length > 100, `'${id}' renders headings with no content`);
+  }
+});
+
+check("docs/RULES.md ships with the package", () => {
+  const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf8"));
+  assert(
+    pkg.files.some((f) => f === "docs" || f === "docs/RULES.md"),
+    "docs/RULES.md is parsed at runtime, so it must be in package.json files"
+  );
 });
 
 // --- scan: exit codes -------------------------------------------------------
