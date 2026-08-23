@@ -17,6 +17,7 @@
 import { spawnSync } from "node:child_process";
 import {
   readdirSync,
+  rmSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -49,7 +50,7 @@ function getVersion() {
   }
 }
 
-const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "rules", "doctor"];
+const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "uninstall", "rules", "doctor"];
 
 function levenshtein(a, b) {
   const m = a.length;
@@ -81,8 +82,27 @@ function nearest(input, candidates, budget) {
   return ranked.length ? ranked[0][0] : null;
 }
 
+// Words people reach for that are not our word. Edit distance never connects
+// "delete" to "uninstall", and leaving someone at a dead end over vocabulary
+// is a bad trade for six lines of table.
+const SUBCOMMAND_ALIASES = {
+  delete: "uninstall",
+  remove: "uninstall",
+  rm: "uninstall",
+  uninstal: "uninstall",
+  setup: "init",
+  install: "init",
+  check: "scan",
+  run: "scan",
+  lint: "scan",
+  audit: "scan",
+  list: "rules",
+  help: "--help",
+  version: "--version",
+};
+
 function suggestSubcommand(input) {
-  return nearest(input, KNOWN_SUBCOMMANDS, 3);
+  return SUBCOMMAND_ALIASES[input] || nearest(input, KNOWN_SUBCOMMANDS, 3);
 }
 
 // Numeric semver compare, e.g. "0.0.10" > "0.0.9" → positive.
@@ -466,19 +486,47 @@ function renderCompact(envelope, meta = {}) {
     return worst(a[1]) - worst(b[1]) || a[0].localeCompare(b[0]);
   });
 
-  const ruleWidth = Math.max(...findings.map((f) => f.ruleId.length));
   console.log("");
   for (const [path, fileFindings] of files) {
     console.log(`${c.bold}${displayPath(path, meta.stripPrefix)}${c.reset}`);
-    for (const f of fileFindings.sort(
-      (a, b) => sevRank(a.severity) - sevRank(b.severity) || a.startLine - b.startLine
-    )) {
-      const mark = (SEV_COLOR[f.severity] || SEV_COLOR.INFO)() +
-        (SEV_MARK[f.severity] || SEV_MARK.INFO) + c.reset;
+
+    // Six rows that differ only by line number are one fact, not six. Collapse
+    // a rule's repeats within a file onto one row and list the lines.
+    const byRule = new Map();
+    for (const f of fileFindings) {
+      const row = byRule.get(f.ruleId) || {
+        ruleId: f.ruleId,
+        severity: f.severity,
+        owasp: f.owasp,
+        lines: [],
+      };
+      row.lines.push(f.startLine);
+      if (sevRank(f.severity) < sevRank(row.severity)) row.severity = f.severity;
+      byRule.set(f.ruleId, row);
+    }
+
+    const rows = [...byRule.values()].sort(
+      (a, b) =>
+        sevRank(a.severity) - sevRank(b.severity) ||
+        Math.min(...a.lines) - Math.min(...b.lines)
+    );
+
+    for (const row of rows) {
+      const mark = (SEV_COLOR[row.severity] || SEV_COLOR.INFO)() +
+        (SEV_MARK[row.severity] || SEV_MARK.INFO) + c.reset;
+      // Two rules can match different spans on one line; as a list of places
+      // to look, that line is one entry.
+      const lines = [...new Set(row.lines)].sort((a, b) => a - b);
+      // Past a handful the exact numbers stop being scannable, and the count
+      // is the part that matters.
+      const where =
+        lines.length > 6
+          ? `${lines.length} lines from ${lines[0]}`
+          : `line${lines.length === 1 ? "" : "s"} ${lines.join(", ")}`;
       console.log(
-        `  ${mark} ${c.dim}${String(f.startLine).padStart(4)}${c.reset}` +
-          `  ${sevTag(f.severity)} ${f.ruleId.padEnd(ruleWidth)}` +
-          `${f.owasp ? `  ${c.yellow}${f.owasp}${c.reset}` : ""}`
+        `  ${mark} ${sevTag(row.severity)} ${c.bold}${row.ruleId}${c.reset}` +
+          `${row.owasp ? ` ${c.yellow}${row.owasp}${c.reset}` : ""}` +
+          `${c.dim}  ${where}${c.reset}`
       );
     }
     console.log("");
@@ -1153,6 +1201,25 @@ function detectHuskyState(cwd) {
   return { inDeps, hasPrepare, initialized };
 }
 
+// What is already at this path? `init` refusing to overwrite a file it wrote
+// itself is the worst possible answer, so tell the cases apart.
+//   absent    nothing there
+//   same      byte-identical to what we would write: already installed
+//   ours      mentions llm-audit but differs: an older version's file
+//   foreign   somebody else's file
+function classifyExisting(destPath, templatePath) {
+  if (!existsSync(destPath)) return "absent";
+  let current, wanted;
+  try {
+    current = readFileSync(destPath, "utf8");
+    wanted = readFileSync(templatePath, "utf8");
+  } catch {
+    return "foreign";
+  }
+  if (current === wanted) return "same";
+  return /llm-audit/.test(current) ? "ours" : "foreign";
+}
+
 async function cmdInit(args) {
   const cwd = process.cwd();
   const force = args.includes("--force");
@@ -1166,6 +1233,35 @@ async function cmdInit(args) {
   // skip the prompt and accept the default. Declining skips only the
   // local hook — the GH Action workflow is still written, since that's
   // project-wide CI code the user reviews in their PR.
+  // Check the disk before asking anything. Prompting and then announcing
+  // there was nothing to do wastes the one question this command gets to ask.
+  if (!force && !dryRun) {
+    const planned = [];
+    if (!skillOnly) {
+      planned.push([join(cwd, ".husky", "pre-commit"), join(TEMPLATES_DIR, "husky-pre-commit")]);
+      planned.push([
+        join(cwd, ".github", "workflows", "llm-audit.yml"),
+        join(TEMPLATES_DIR, "github-action.yml"),
+      ]);
+    }
+    if (installSkill) {
+      planned.push([
+        join(cwd, ".claude", "skills", "llm-audit", "SKILL.md"),
+        join(SKILLS_DIR, "llm-audit", "SKILL.md"),
+      ]);
+    }
+    const allSame =
+      planned.length > 0 &&
+      planned.every(([dest, tpl]) => classifyExisting(dest, tpl) === "same");
+    if (allSame) {
+      console.log("Everything is already installed and up to date:");
+      for (const [dest] of planned) console.log(`  ${displayPath(dest)}`);
+      console.log("");
+      console.log("Nothing to do. `llm-audit init --force` reinstalls from the templates.");
+      return;
+    }
+  }
+
   let installHook = !skillOnly;
   if (installHook && !yes && !dryRun) {
     installHook = await promptYesNo(
@@ -1180,26 +1276,48 @@ async function cmdInit(args) {
   }
 
   function writeOrRefuse(srcAbsPath, destPath, exec = false) {
+    const state = classifyExisting(destPath, srcAbsPath);
+    const shown = displayPath(destPath);
+
     if (dryRun) {
-      const exists = existsSync(destPath);
+      const what = {
+        absent: "would write",
+        same: "already installed, would leave alone",
+        ours: "installed by an older version, would update with --force",
+        foreign: "not ours, would refuse without --force",
+      }[state];
+      console.log(`[dry-run] ${what} ${shown}`);
+      return;
+    }
+
+    // Already exactly what we would write. Saying so and moving on is the
+    // whole point of running init twice.
+    if (state === "same" && !force) {
+      console.log(`already installed  ${shown}`);
+      return;
+    }
+
+    if (state === "ours" && !force) {
+      console.log(`already installed  ${shown}`);
       console.log(
-        `[dry-run] would write ${destPath}${exists ? " (already exists, would refuse without --force)" : ""}`
+        `  it differs from this version's template; ` +
+          `run \`llm-audit init --force\` to update it.`
       );
       return;
     }
-    if (existsSync(destPath) && !force) {
+
+    if (state === "foreign" && !force) {
+      console.error(`refusing to overwrite ${shown}`);
       console.error(
-        `refusing to overwrite ${destPath} (use --force to override)`
-      );
-      console.error(
-        `  hint: if this file came from a previous llm-audit init, ` +
-          `delete it first or pass --force.`
+        "  that file was not written by llm-audit. " +
+          "back it up and pass --force, or merge the two by hand."
       );
       process.exit(1);
     }
+
     copyFileSync(srcAbsPath, destPath);
     if (exec) spawnSync("chmod", ["+x", destPath]);
-    console.log(`wrote ${destPath}`);
+    console.log(`wrote ${shown}`);
   }
 
   if (!skillOnly) {
@@ -1321,6 +1439,97 @@ async function cmdInit(args) {
   console.log("  - see the demo:         `npx llm-audit demo`");
 }
 
+// The counterpart to init. Somebody who runs `init` will eventually want it
+// gone, and reaching for `llm-audit delete` and getting "unknown subcommand"
+// is a dead end — the files are ours, so removing them should be ours too.
+async function cmdUninstall(args) {
+  const cwd = process.cwd();
+  const dryRun = args.includes("--dry-run");
+  const yes = args.includes("--yes") || args.includes("-y");
+
+  const candidates = [
+    {
+      path: join(cwd, ".husky", "pre-commit"),
+      template: join(TEMPLATES_DIR, "husky-pre-commit"),
+      label: "pre-commit hook",
+    },
+    {
+      path: join(cwd, ".github", "workflows", "llm-audit.yml"),
+      template: join(TEMPLATES_DIR, "github-action.yml"),
+      label: "CI workflow",
+    },
+    {
+      path: join(cwd, ".claude", "skills", "llm-audit", "SKILL.md"),
+      template: join(SKILLS_DIR, "llm-audit", "SKILL.md"),
+      label: "coding-agent skill",
+    },
+  ];
+
+  const removable = [];
+  const kept = [];
+  for (const item of candidates) {
+    const state = classifyExisting(item.path, item.template);
+    if (state === "absent") continue;
+    // Only ever delete a file we can prove is ours. Anything edited beyond
+    // recognition stays, and we say why.
+    if (state === "same" || state === "ours") removable.push({ ...item, state });
+    else kept.push(item);
+  }
+
+  if (removable.length === 0 && kept.length === 0) {
+    console.log("Nothing to remove: llm-audit is not installed in this project.");
+    return;
+  }
+
+  if (removable.length) {
+    console.log(dryRun ? "Would remove:" : "Will remove:");
+    for (const item of removable) {
+      console.log(
+        `  ${displayPath(item.path)}  ${c.dim}(${item.label})${c.reset}`
+      );
+    }
+  }
+  for (const item of kept) {
+    console.log("");
+    console.log(`Leaving ${displayPath(item.path)} alone.`);
+    console.log("  it has been edited since llm-audit wrote it; remove it by hand if you want it gone.");
+  }
+
+  if (dryRun || removable.length === 0) return;
+
+  console.log("");
+  const go = yes || (await promptYesNo("Remove these files?", true));
+  if (!go) {
+    console.log("Nothing removed.");
+    return;
+  }
+
+  for (const item of removable) {
+    try {
+      rmSync(item.path, { force: true });
+      console.log(`removed ${displayPath(item.path)}`);
+    } catch (err) {
+      console.error(`error: could not remove ${displayPath(item.path)}: ${err.message}`);
+      process.exitCode = 1;
+    }
+  }
+
+  // Clean up the skill directory if it is now empty; leave .husky and
+  // .github alone, since other tools live there.
+  const skillDir = join(cwd, ".claude", "skills", "llm-audit");
+  try {
+    if (existsSync(skillDir) && readdirSync(skillDir).length === 0) {
+      rmSync(skillDir, { recursive: true, force: true });
+    }
+  } catch {
+    // a leftover empty directory is not worth failing over
+  }
+
+  console.log("");
+  console.log("Done. The package itself is still installed;");
+  console.log("`npm remove llm-audit` if you want that gone too.");
+}
+
 async function cmdDoctor() {
   const cwd = process.cwd();
   let warnings = 0;
@@ -1328,7 +1537,13 @@ async function cmdDoctor() {
 
   function status(label, kind, fix = "") {
     const tag =
-      kind === "ok" ? "[ok]  " : kind === "warn" ? "[warn]" : "[fail]";
+      kind === "ok"
+        ? "[ok]  "
+        : kind === "note"
+          ? "[note]"
+          : kind === "warn"
+            ? "[warn]"
+            : "[fail]";
     if (kind === "warn") warnings++;
     if (kind === "fail") failures++;
     console.log(`  ${tag}  ${label}`);
@@ -1421,38 +1636,43 @@ async function cmdDoctor() {
   } else if (husky.inDeps) {
     status(
       "husky installed but not initialized",
-      "warn",
+      existsSync(join(cwd, ".husky", "pre-commit")) ? "warn" : "note",
       husky.hasPrepare
         ? "fix: npm run prepare"
         : "fix: npm pkg set scripts.prepare='husky' && npm run prepare"
     );
-  } else {
+  } else if (existsSync(join(cwd, ".husky", "pre-commit"))) {
     status(
-      "husky is not installed",
+      "husky is not installed, but a pre-commit hook is",
       "warn",
-      "the pre-commit hook will not run until husky is set up; fix: " +
-        "npm i -D husky && npm pkg set scripts.prepare='husky' && npm run prepare"
+      "the hook will not run: npm i -D husky && " +
+        "npm pkg set scripts.prepare='husky' && npm run prepare"
     );
+  } else {
+    status("husky not installed", "note", "only needed for the pre-commit hook");
   }
-  // hook + workflow files presence
+
+  // A hook that cannot run is a fault. No hook at all is a project that has
+  // not adopted the pre-commit path, which is allowed — warning about a choice
+  // teaches people to ignore warnings.
   const hookPath = join(cwd, ".husky", "pre-commit");
   if (existsSync(hookPath)) {
-    status(".husky/pre-commit hook present", "ok");
+    status(".husky/pre-commit hook installed", "ok");
   } else {
     status(
-      ".husky/pre-commit hook missing",
-      "warn",
-      "run `npx llm-audit init` to install"
+      ".husky/pre-commit hook not installed",
+      "note",
+      "optional; `npx llm-audit init` sets it up"
     );
   }
   const wfPath = join(cwd, ".github", "workflows", "llm-audit.yml");
   if (existsSync(wfPath)) {
-    status(".github/workflows/llm-audit.yml present", "ok");
+    status(".github/workflows/llm-audit.yml installed", "ok");
   } else {
     status(
-      ".github/workflows/llm-audit.yml missing",
-      "warn",
-      "run `npx llm-audit init` to install"
+      ".github/workflows/llm-audit.yml not installed",
+      "note",
+      "optional; `npx llm-audit init` sets it up"
     );
   }
 
@@ -1462,7 +1682,7 @@ async function cmdDoctor() {
 
   console.log("");
   if (failures === 0 && warnings === 0) {
-    console.log("All checks passed.");
+    console.log("All checks passed. Notes are optional setup, not problems.");
   } else if (failures === 0) {
     console.log(`${warnings} warning${warnings === 1 ? "" : "s"}.`);
   } else {
@@ -1507,6 +1727,7 @@ COMMANDS
   doctor                          Diagnose dependencies and project setup
   scan [paths...] [flags]         Run the rule pack against given paths (default: .)
   init [flags]                    Install pre-commit hook + CI workflow + optional skill
+  uninstall [--dry-run] [-y]      Remove what init installed
   rules [rule-id]                 List every rule, or explain one in full
 
 SCAN FLAGS
@@ -1532,6 +1753,12 @@ FLAGS
   --version                       Print version and exit
   -h, --help                      Show this message
 
+NOT ON YOUR PATH?
+  Every command works through npx without installing anything:
+  \`npx llm-audit scan\`. For a bare \`llm-audit\`, install it globally
+  with \`npm i -g llm-audit\`, or add it to a project with
+  \`npm i -D llm-audit\` and call it from a package.json script.
+
 LEARN MORE
   Project page    https://luislozoya.com/llm-audit
   Repo            https://github.com/Javierlozo/llm-audit
@@ -1550,6 +1777,9 @@ switch (sub) {
     break;
   case "rules":
     cmdRules(rest);
+    break;
+  case "uninstall":
+    await cmdUninstall(rest);
     break;
   case "demo":
     cmdDemo();

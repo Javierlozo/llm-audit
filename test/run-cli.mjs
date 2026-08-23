@@ -98,6 +98,60 @@ check("--help exits 0 and documents every subcommand", () => {
   }
 });
 
+check("common wrong words map to the right command", () => {
+  for (const [typed, expected] of [["delete", "uninstall"], ["remove", "uninstall"], ["setup", "init"]]) {
+    const r = run([typed]);
+    assertEqual(r.status, 2, `exit code for '${typed}'`);
+    assert(
+      r.stderr.includes(expected),
+      `'${typed}' should point at '${expected}', got: ${r.stderr.trim()}`
+    );
+  }
+});
+
+check("init is idempotent and says so", () => {
+  withTempDir((dir) => {
+    const first = run(["init", "-y"], { cwd: dir });
+    assertEqual(first.status, 0, "first init");
+    const second = run(["init", "-y"], { cwd: dir });
+    assertEqual(second.status, 0, "second init must not fail");
+    assert(
+      /already installed|already installed and up to date/i.test(second.stdout),
+      `expected init to report it is already installed, got: ${second.stdout.trim()}`
+    );
+  });
+});
+
+check("uninstall removes what init wrote, and nothing else", () => {
+  withTempDir((dir) => {
+    run(["init", "-y"], { cwd: dir });
+    const hook = join(dir, ".husky", "pre-commit");
+    const workflow = join(dir, ".github", "workflows", "llm-audit.yml");
+    assert(existsSync(hook) && existsSync(workflow), "init did not write both files");
+
+    // A file we did not write must survive.
+    const theirs = join(dir, ".github", "workflows", "their-ci.yml");
+    writeFileSync(theirs, "name: theirs\n");
+
+    const r = run(["uninstall", "-y"], { cwd: dir });
+    assertEqual(r.status, 0, "exit code");
+    assert(!existsSync(hook), "hook was not removed");
+    assert(!existsSync(workflow), "workflow was not removed");
+    assert(existsSync(theirs), "uninstall removed a file it did not write");
+  });
+});
+
+check("uninstall leaves a hook it did not write", () => {
+  withTempDir((dir) => {
+    mkdirSync(join(dir, ".husky"), { recursive: true });
+    const hook = join(dir, ".husky", "pre-commit");
+    writeFileSync(hook, "#!/bin/sh\nnpm run lint-staged\n");
+    const r = run(["uninstall", "-y"], { cwd: dir });
+    assert(existsSync(hook), "somebody else's hook was deleted");
+    assert(/Leaving/.test(r.stdout), "expected uninstall to say what it left alone");
+  });
+});
+
 check("unknown subcommand exits 2 and suggests the closest match", () => {
   const r = run(["scna"]);
   assertEqual(r.status, 2, "exit code");
@@ -192,17 +246,34 @@ check("every shipped rule has teaching material in docs/RULES.md", () => {
   }
 });
 
-check("doctor does not describe a missing file as present", () => {
+check("doctor treats optional setup as a note, not a warning", () => {
   withTempDir((dir) => {
     const r = run(["doctor"], { cwd: dir });
-    const lines = r.stdout.split("\n").filter((l) => /pre-commit|workflows/.test(l));
+    const lines = r.stdout.split("\n").filter((l) => /pre-commit|workflows|husky/.test(l));
     assert(lines.length > 0, "expected doctor to report on the hook and workflow");
     for (const line of lines) {
-      // A warn line about a file that is not there must not say "present".
-      if (/\[warn\]/.test(line)) {
+      // Nothing is wrong in an empty project: it simply has not adopted the
+      // hook. Warning about a choice trains people to ignore warnings.
+      assert(!/\[warn\]/.test(line), `optional setup reported as a warning: ${line.trim()}`);
+      if (/\[note\]/.test(line)) {
         assert(!/present/.test(line), `doctor contradicts itself: ${line.trim()}`);
       }
     }
+    // A bare temp directory still warns that it is not a git repository, which
+    // is a real finding. What must not warn is the optional hook setup.
+    assert(!/husky/.test(r.stdout.match(/\[warn\].*/g)?.join("\n") || ""), "husky warned");
+  });
+});
+
+check("doctor warns when a hook is installed that cannot run", () => {
+  withTempDir((dir) => {
+    mkdirSync(join(dir, ".husky"), { recursive: true });
+    writeFileSync(join(dir, ".husky", "pre-commit"), "npx llm-audit scan\n");
+    const r = run(["doctor"], { cwd: dir });
+    assert(
+      /\[warn\].*husky is not installed, but a pre-commit hook is/.test(r.stdout),
+      "a hook with no husky to run it must warn"
+    );
   });
 });
 
@@ -357,6 +428,20 @@ if (!hasSemgrep()) {
       findings.every((f) => f.severity === "ERROR"),
       "a warning survived --severity error"
     );
+  });
+
+  check("compact view collapses a rule's repeats in a file", () => {
+    const r = run(["scan", "--compact", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
+    // Match the finding rows only: the fixture path and the "Start here" line
+    // both contain the rule id too.
+    const ruleLines = r.stdout
+      .split("\n")
+      .filter((l) => /^\s+[\u2717!\u00b7]\s/.test(l) && l.includes("hardcoded-llm-api-key"));
+    assertEqual(ruleLines.length, 1, "one row per rule per file");
+    assert(/lines \d+, \d+, \d+/.test(ruleLines[0]), "expected the line numbers listed");
+    // A line matched twice by one rule is one place to look, listed once.
+    const nums = (ruleLines[0].match(/\d+/g) || []).filter((n) => n.length <= 4);
+    assertEqual(nums.length, new Set(nums).size, "duplicate line numbers in the row");
   });
 
   check("scan --compact prints one line per finding", () => {

@@ -9,6 +9,39 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Added
+
+- `llm-audit uninstall` removes the pre-commit hook, the CI workflow, and the
+  skill that `init` wrote. It only deletes files it can prove are its own, and
+  says which ones it is leaving alone. Reaching for `llm-audit delete` and
+  getting "unknown subcommand" was a dead end with no way out.
+- Common wrong words now point at the right command: `delete`, `remove`, and
+  `rm` suggest `uninstall`; `setup` and `install` suggest `init`; `check`,
+  `run`, and `lint` suggest `scan`. Edit distance was never going to connect
+  "delete" to "uninstall".
+- `--help` explains that the CLI runs through `npx` unless it is installed
+  globally, since a bare `llm-audit` is not on PATH after a local install.
+
+### Changed
+
+- The compact view collapses a rule's repeats within a file onto one row:
+  `hardcoded-llm-api-key LLM06  lines 18, 22, 27` instead of three near
+  identical rows. On the bundled fixtures that is 42 findings in 24 lines
+  rather than 60. Past six occurrences it prints a count instead of a list.
+- `doctor` distinguishes optional setup from problems. A project with no
+  pre-commit hook gets `[note]`, not `[warn]` — warning about a choice teaches
+  people to ignore warnings. A hook installed with no husky to run it is still
+  a warning, because that one is broken.
+
+### Fixed
+
+- `init` refused to overwrite files it had written itself, so running it twice
+  ended in an error. It now recognises its own work: identical files report
+  "already installed", files from an older version say how to update, and only
+  a file llm-audit did not write is refused. It also checks the disk before
+  prompting, instead of asking a question and then announcing there was
+  nothing to do.
+
 ### Fixed
 
 - `scan` on a path that does not exist printed nothing at all and exited 2.
