@@ -11,6 +11,15 @@ independently of the package. It is at `1` and has not changed.
 
 ### Fixed
 
+- The installed GitHub Action ran `npm ci` before scanning. A static scan reads
+  source files and never needs the application's dependency tree, so that step
+  only added ways for a security job to fail for reasons that are not security.
+  It failed on a real repo within a minute of being enabled, on a lock file
+  inconsistency that had nothing to do with llm-audit. The step is gone, and a
+  test keeps it gone.
+
+### Fixed
+
 - The GitHub Action `init` installs carried the same mislabeled SHA pin this
   repo had: `actions/checkout` commented `# v6.0.2` while the SHA was v4.3.1
   upstream. Anyone who ran `init` got that comment in their repository. Both

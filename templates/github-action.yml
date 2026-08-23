@@ -20,10 +20,15 @@ jobs:
           node-version: 22
       - name: install semgrep
         run: pipx install semgrep
-      - name: install deps
-        run: npm ci
-      # `npx` resolves the latest published llm-audit at workflow run time
-      # unless `llm-audit` is in your devDependencies. To pin to a reviewed
-      # version, run `npm i -D llm-audit` or use `npx llm-audit@<version>`.
+
+      # No `npm ci` here on purpose. This is a static scan of source files, so
+      # it never needs your application's dependency tree, and installing it
+      # would make this job fail for reasons that have nothing to do with
+      # security: a lock file out of sync, a private registry, a postinstall
+      # script that needs secrets.
+      #
+      # Pin the version you have reviewed rather than taking whatever is latest
+      # on the morning the job runs:
+      #   run: npx --yes llm-audit@1.2.3 scan
       - name: run llm-audit
-        run: npx llm-audit scan
+        run: npx --yes llm-audit scan

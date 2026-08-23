@@ -317,6 +317,21 @@ check("the installed workflow's action pins match their version comments", () =>
   }
 });
 
+// The scan reads source files. Making CI install the project's dependency tree
+// first means the security job fails for reasons that are not security: a lock
+// file out of sync, a private registry, a postinstall script wanting secrets.
+// That happened on a real repo the day this was written.
+check("the installed workflow does not depend on the project's dependencies", () => {
+  const workflow = readFileSync(join(PKG_ROOT, "templates", "github-action.yml"), "utf8");
+  const steps = workflow
+    .split("\n")
+    .filter((l) => /^\s+run:/.test(l))
+    .join("\n");
+  assert(!/npm ci\b/.test(steps), "the workflow must not run `npm ci`");
+  assert(!/npm i(nstall)?\b(?!.*-g)/.test(steps), "the workflow must not install project deps");
+  assert(/npx --yes llm-audit scan/.test(steps), "expected the scan step");
+});
+
 check("docs/RULES.md ships with the package", () => {
   const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf8"));
   assert(
