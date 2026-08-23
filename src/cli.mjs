@@ -560,8 +560,11 @@ function writeHtmlReport(envelope, htmlPath, targetPaths, filters = {}) {
 }
 
 function cmdScan(args) {
-  ensureSemgrep();
-
+  // Flags are validated before the environment is. A typo in a flag is the
+  // user's mistake and should be reported as such even on a machine where
+  // semgrep is missing — telling someone to install an engine when what they
+  // actually did was misspell `--sarif` sends them down the wrong path.
+  //
   // Parse our recognized flags out of args; everything else is a path.
   // We accept `--json` and `--sarif` as output-format selectors, plus
   // a defensive `--` literal that some users include explicitly.
@@ -639,6 +642,9 @@ function cmdScan(args) {
     }
   }
   const targetPaths = paths.length ? paths : ["."];
+
+  // Arguments are good; now the environment has to be.
+  ensureSemgrep();
 
   // SARIF is a passthrough of Semgrep's own writer, so our filters and our
   // report have nothing to act on. Say that plainly instead of silently

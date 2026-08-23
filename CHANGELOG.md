@@ -9,6 +9,26 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+## [0.4.2] — 2026-08-22
+
+### Added
+
+- `assets/commands.svg` — a card of all six commands in the README, ordered by
+  the moment you would reach for each one. Generated from `--help` by
+  `npm run commands:svg`, which refuses to render a command the CLI does not
+  list.
+
+### Fixed
+
+- `scan` validated flags only after checking for semgrep, so a typo like
+  `--sarrif` on a machine without the engine reported the missing engine
+  instead of the typo. Arguments are checked first now: a usage error is the
+  user's mistake and should be named as such.
+- The docs-claim test called `demo`, which needs semgrep, from outside the
+  suite's semgrep guard — so `npm test` failed rather than skipped on a machine
+  without it. Both defects were found by running the suite with semgrep off
+  PATH, which now also has a regression test.
+
 ## [0.4.1] — 2026-08-22
 
 ### Fixed

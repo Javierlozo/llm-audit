@@ -109,6 +109,19 @@ check("unknown output flag exits 2", () => {
   assertEqual(r.status, 2, "exit code");
 });
 
+// A flag typo is the user's mistake; a missing engine is the machine's. The
+// first must be reported even when the second is also true, so this runs with
+// an empty PATH — semgrep is unreachable by construction.
+check("an unknown flag is reported even when semgrep is missing", () => {
+  const r = run(["scan", "--yaml"], { env: { PATH: "" } });
+  assertEqual(r.status, 2, "exit code");
+  assert(/unknown flag/.test(r.stderr), "expected the flag error, not an engine error");
+  assert(
+    !/semgrep.*not installed/.test(r.stderr),
+    "the engine error should not preempt a usage error"
+  );
+});
+
 check("rules lists all twelve shipped rules", () => {
   const r = run(["rules"]);
   assertEqual(r.status, 0, "exit code");
@@ -142,45 +155,6 @@ check("the README command map is generated from the current --help", () => {
       "assets/commands.svg is stale — run `npm run commands:svg`"
     );
   });
-});
-
-// --- published claims must match reality -----------------------------------
-//
-// The README's headline table claims a specific number of findings against the
-// bundled fixtures, and that number is the project's central empirical claim.
-// It had drifted to three different values across three documents before this
-// check existed. Assert the docs against what the tool actually reports.
-
-check("the finding count claimed in the docs matches what demo reports", () => {
-  const r = run(["demo"]);
-  assertEqual(r.status, 0, "demo exit code");
-  const reported = r.stdout.match(/^(\d+) findings/m);
-  assert(reported, "could not find a summary line in demo output");
-  const actual = Number(reported[1]);
-
-  const claimPatterns = [
-    // Prose: "12 rules, 42 matches", "Confirm 42 hits", "flags 42 violations"
-    /\*{0,2}(\d+)\*{0,2} (?:matches|hits|vulnerability matches|violations)\b/g,
-    // The README's headline comparison row, which carries no trailing noun.
-    /Findings on this repo's TS\/TSX fixtures \| \*{0,2}(\d+)\*{0,2}/g,
-  ];
-
-  for (const file of [
-    "README.md",
-    join("docs", "COMPETITIVE-LANDSCAPE.md"),
-    join("docs", "BRIEF.md"),
-    join("docs", "POST-ZERO-HITS.md"),
-  ]) {
-    const text = readFileSync(join(PKG_ROOT, file), "utf8");
-    let seen = 0;
-    for (const pattern of claimPatterns) {
-      for (const m of text.matchAll(pattern)) {
-        seen++;
-        assertEqual(Number(m[1]), actual, `${file} claims a finding count that`);
-      }
-    }
-    assert(seen > 0, `${file} carries no finding-count claim to check anymore`);
-  }
 });
 
 // --- docs/RULES.md is load-bearing -----------------------------------------
@@ -252,6 +226,45 @@ if (!hasSemgrep()) {
     const r = run(["rules", "no-such-rule"]);
     assertEqual(r.status, 2, "exit code");
     assert(/unknown rule/.test(r.stderr), "expected an unknown-rule message");
+  });
+
+  // --- published claims must match reality -----------------------------------
+  //
+  // The README's headline table claims a specific number of findings against the
+  // bundled fixtures, and that number is the project's central empirical claim.
+  // It had drifted to three different values across three documents before this
+  // check existed. Assert the docs against what the tool actually reports.
+
+  check("the finding count claimed in the docs matches what demo reports", () => {
+    const r = run(["demo"]);
+    assertEqual(r.status, 0, "demo exit code");
+    const reported = r.stdout.match(/^(\d+) findings/m);
+    assert(reported, "could not find a summary line in demo output");
+    const actual = Number(reported[1]);
+
+    const claimPatterns = [
+      // Prose: "12 rules, 42 matches", "Confirm 42 hits", "flags 42 violations"
+      /\*{0,2}(\d+)\*{0,2} (?:matches|hits|vulnerability matches|violations)\b/g,
+      // The README's headline comparison row, which carries no trailing noun.
+      /Findings on this repo's TS\/TSX fixtures \| \*{0,2}(\d+)\*{0,2}/g,
+    ];
+
+    for (const file of [
+      "README.md",
+      join("docs", "COMPETITIVE-LANDSCAPE.md"),
+      join("docs", "BRIEF.md"),
+      join("docs", "POST-ZERO-HITS.md"),
+    ]) {
+      const text = readFileSync(join(PKG_ROOT, file), "utf8");
+      let seen = 0;
+      for (const pattern of claimPatterns) {
+        for (const m of text.matchAll(pattern)) {
+          seen++;
+          assertEqual(Number(m[1]), actual, `${file} claims a finding count that`);
+        }
+      }
+      assert(seen > 0, `${file} carries no finding-count claim to check anymore`);
+    }
   });
 
   check("scan exits 0 on clean code", () => {
