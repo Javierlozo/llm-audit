@@ -9,6 +9,28 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-08-22
+
+### Fixed
+
+- The finding count claimed against the bundled fixtures said 40 (README,
+  `COMPETITIVE-LANDSCAPE.md`, `POST-ZERO-HITS.md`) or 37 (`BRIEF.md`). The pack
+  produces 42. Rules added after those documents were written moved the number
+  and nothing pulled the claim along. Corrected, and now asserted by a test that
+  reads the count out of `demo` and compares it against every claim in the docs.
+- The README's "vs. Semgrep" navigation link had never resolved — it pointed at
+  `#why-not-just-paibest-practices`; GitHub renders that heading as
+  `#why-not-just-pai-best-practices`.
+
+### Changed
+
+- README restructured around what a first-time reader decides in five seconds:
+  pitch, install-and-run, the terminal recording, then navigation. Badges cut
+  from nine to four; the comparison table from ten rows to four, with the full
+  version in `COMPETITIVE-LANDSCAPE.md`.
+- `BRIEF.md` no longer describes the CLI as "convenience"; its roadmap now
+  names the taint-mode and baseline work.
+
 ## [0.4.0] — 2026-08-22
 
 ### Added
