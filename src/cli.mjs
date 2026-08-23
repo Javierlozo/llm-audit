@@ -313,6 +313,11 @@ function buildEnvelope(semgrepOut, targetPaths) {
 // FORCE_COLOR opts a non-TTY consumer back in — CI runners that render ANSI,
 // and our own README asset generator, which needs the coloured human output
 // without allocating a pty.
+// Elapsed time is genuinely useful and genuinely volatile. Anything that
+// renders output into a committed artifact — the README hero, a golden test —
+// sets this so the same input produces the same bytes.
+const DETERMINISTIC = Boolean(process.env.LLM_AUDIT_DETERMINISTIC);
+
 const COLOR =
   (Boolean(process.stdout.isTTY) || Boolean(process.env.FORCE_COLOR)) &&
   !process.env.NO_COLOR;
@@ -644,7 +649,7 @@ function renderHuman(envelope, meta = {}) {
       `  ${breakdown}` +
       `${c.dim}  in ${fileCount} file${fileCount === 1 ? "" : "s"}` +
       ` \u00b7 ${ruleIds.size} of ${ruleCount} rules fired` +
-      `${meta.elapsedMs ? ` \u00b7 ${(meta.elapsedMs / 1000).toFixed(1)}s` : ""}${c.reset}`
+      `${meta.elapsedMs && !DETERMINISTIC ? ` \u00b7 ${(meta.elapsedMs / 1000).toFixed(1)}s` : ""}${c.reset}`
   );
 
   // One next action, not a list. The worst rule with the most occurrences is

@@ -69,6 +69,8 @@ function captureScan() {
         env: {
           ...process.env,
           FORCE_COLOR: "1",
+          // Keep volatile values (elapsed time) out of a committed asset.
+          LLM_AUDIT_DETERMINISTIC: "1",
           COLUMNS: String(COLUMNS),
           NO_COLOR: "",
         },
@@ -135,18 +137,27 @@ const PROMPT = "$ ";
 // A hero has to fit above the fold. Keep the first finding whole — the
 // rationale is the product — then elide the middle and land on the summary,
 // with a visible marker so nobody mistakes the crop for the whole report.
-const HEAD_LINES = 21;
-const TAIL_LINES = 4;
+const HEAD_MIN_LINES = 21;
+// The summary block grew a "Start here" line; the tail must cover the divider
+// through the last hint or the crop eats the rule above the totals.
+const TAIL_LINES = 5;
 const COMMAND = "npx llm-audit scan src";
 
 // Returns the display lines, with an explicit marker where output was cut.
 function crop(lines) {
-  if (lines.length <= HEAD_LINES + TAIL_LINES + 1) return lines;
-  const hidden = lines.length - HEAD_LINES - TAIL_LINES;
+  // Never cut inside a block: extend past the minimum to the next blank line,
+  // so a code snippet is shown whole or not at all. Cutting one two lines
+  // above the matched line — which is what a fixed head count did once
+  // findings gained context — advertises the tool finding nothing.
+  let head = HEAD_MIN_LINES;
+  while (head < lines.length && lines[head].trim() !== "") head++;
+
+  if (lines.length <= head + TAIL_LINES + 1) return lines;
+  const hidden = lines.length - head - TAIL_LINES;
   const DIM = `${ESC}[2m`;
   const RESET = `${ESC}[0m`;
   return [
-    ...lines.slice(0, HEAD_LINES),
+    ...lines.slice(0, head),
     "",
     `${DIM}      \u22ee  ${hidden} more lines \u2014 the rest of the report, then the summary${RESET}`,
     ...lines.slice(-TAIL_LINES),

@@ -389,6 +389,17 @@ if (!hasSemgrep()) {
     assert(/^\s+20 \u2502/m.test(r.stdout), "expected a line after the match");
   });
 
+  check("LLM_AUDIT_DETERMINISTIC removes volatile output", () => {
+    const target = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+    const plain = run(["scan", target]);
+    const fixed = run(["scan", target], { env: { ...process.env, LLM_AUDIT_DETERMINISTIC: "1" } });
+    assert(/rules fired · \d+\.\ds/.test(plain.stdout), "expected an elapsed time by default");
+    assert(!/rules fired · \d/.test(fixed.stdout), "elapsed time must be suppressed");
+    // Same input, same bytes — the property the README hero depends on.
+    const again = run(["scan", target], { env: { ...process.env, LLM_AUDIT_DETERMINISTIC: "1" } });
+    assertEqual(again.stdout, fixed.stdout, "deterministic output");
+  });
+
   check("the summary names one place to start", () => {
     const r = run(["scan", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
     assert(/Start here: hardcoded-llm-api-key/.test(r.stdout), "expected a next action");

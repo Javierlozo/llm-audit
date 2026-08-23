@@ -9,6 +9,16 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The README hero cropped mid-snippet once findings gained context lines, so
+  it showed the two lines *above* the offending code and not the code itself —
+  an advertisement for the tool finding nothing. The crop extends to a block
+  boundary now, and the tail covers the whole summary again.
+- `LLM_AUDIT_DETERMINISTIC=1` suppresses volatile output (elapsed time) so a
+  rendered artifact is reproducible byte-for-byte. The generated hero sets it;
+  without it the elapsed time had started changing the asset on every run.
+
 ### Added
 
 - The JSON envelope and the HTML report now record **which revision was

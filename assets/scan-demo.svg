@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="746" height="542" viewBox="0 0 746 542" role="img" aria-label="Running npx llm-audit scan src: two findings in a chat route handler, a hardcoded provider key and model output parsed without a schema" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
+<svg xmlns="http://www.w3.org/2000/svg" width="746" height="606" viewBox="0 0 746 606" role="img" aria-label="Running npx llm-audit scan src: two findings in a chat route handler, a hardcoded provider key and model output parsed without a schema" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
 <title>npx llm-audit scan src</title>
 <style>
 /* Base state is the FINISHED frame, not a blank one: a renderer that does not
@@ -6,37 +6,41 @@
    whole report instead of an empty terminal. The animation overrides this
    while it runs. */
 .ln{opacity:1}
-.l0{animation:k0 12085ms linear infinite}@keyframes k0{0%,13.240%{opacity:0}13.250%,100%{opacity:1}}
-.l1{animation:k1 12085ms linear infinite}@keyframes k1{0%,13.695%{opacity:0}13.705%,100%{opacity:1}}
-.l2{animation:k2 12085ms linear infinite}@keyframes k2{0%,14.150%{opacity:0}14.160%,100%{opacity:1}}
-.l3{animation:k3 12085ms linear infinite}@keyframes k3{0%,14.605%{opacity:0}14.615%,100%{opacity:1}}
-.l4{animation:k4 12085ms linear infinite}@keyframes k4{0%,15.060%{opacity:0}15.070%,100%{opacity:1}}
-.l5{animation:k5 12085ms linear infinite}@keyframes k5{0%,15.515%{opacity:0}15.525%,100%{opacity:1}}
-.l6{animation:k6 12085ms linear infinite}@keyframes k6{0%,15.970%{opacity:0}15.980%,100%{opacity:1}}
-.l7{animation:k7 12085ms linear infinite}@keyframes k7{0%,16.425%{opacity:0}16.435%,100%{opacity:1}}
-.l8{animation:k8 12085ms linear infinite}@keyframes k8{0%,16.880%{opacity:0}16.890%,100%{opacity:1}}
-.l9{animation:k9 12085ms linear infinite}@keyframes k9{0%,17.336%{opacity:0}17.346%,100%{opacity:1}}
-.l10{animation:k10 12085ms linear infinite}@keyframes k10{0%,17.791%{opacity:0}17.801%,100%{opacity:1}}
-.l11{animation:k11 12085ms linear infinite}@keyframes k11{0%,18.246%{opacity:0}18.256%,100%{opacity:1}}
-.l12{animation:k12 12085ms linear infinite}@keyframes k12{0%,18.701%{opacity:0}18.711%,100%{opacity:1}}
-.l13{animation:k13 12085ms linear infinite}@keyframes k13{0%,19.156%{opacity:0}19.166%,100%{opacity:1}}
-.l14{animation:k14 12085ms linear infinite}@keyframes k14{0%,19.611%{opacity:0}19.621%,100%{opacity:1}}
-.l15{animation:k15 12085ms linear infinite}@keyframes k15{0%,20.066%{opacity:0}20.076%,100%{opacity:1}}
-.l16{animation:k16 12085ms linear infinite}@keyframes k16{0%,20.521%{opacity:0}20.531%,100%{opacity:1}}
-.l17{animation:k17 12085ms linear infinite}@keyframes k17{0%,20.976%{opacity:0}20.986%,100%{opacity:1}}
-.l18{animation:k18 12085ms linear infinite}@keyframes k18{0%,21.432%{opacity:0}21.442%,100%{opacity:1}}
-.l19{animation:k19 12085ms linear infinite}@keyframes k19{0%,21.887%{opacity:0}21.897%,100%{opacity:1}}
-.l20{animation:k20 12085ms linear infinite}@keyframes k20{0%,22.342%{opacity:0}22.352%,100%{opacity:1}}
-.l21{animation:k21 12085ms linear infinite}@keyframes k21{0%,22.797%{opacity:0}22.807%,100%{opacity:1}}
-.l22{animation:k22 12085ms linear infinite}@keyframes k22{0%,23.252%{opacity:0}23.262%,100%{opacity:1}}
-.l23{animation:k23 12085ms linear infinite}@keyframes k23{0%,23.707%{opacity:0}23.717%,100%{opacity:1}}
-.l24{animation:k24 12085ms linear infinite}@keyframes k24{0%,24.162%{opacity:0}24.172%,100%{opacity:1}}
-.l25{animation:k25 12085ms linear infinite}@keyframes k25{0%,24.617%{opacity:0}24.627%,100%{opacity:1}}
-.l26{animation:k26 12085ms linear infinite}@keyframes k26{0%,25.072%{opacity:0}25.082%,100%{opacity:1}}
+.l0{animation:k0 12305ms linear infinite}@keyframes k0{0%,13.003%{opacity:0}13.013%,100%{opacity:1}}
+.l1{animation:k1 12305ms linear infinite}@keyframes k1{0%,13.450%{opacity:0}13.460%,100%{opacity:1}}
+.l2{animation:k2 12305ms linear infinite}@keyframes k2{0%,13.897%{opacity:0}13.907%,100%{opacity:1}}
+.l3{animation:k3 12305ms linear infinite}@keyframes k3{0%,14.344%{opacity:0}14.354%,100%{opacity:1}}
+.l4{animation:k4 12305ms linear infinite}@keyframes k4{0%,14.791%{opacity:0}14.801%,100%{opacity:1}}
+.l5{animation:k5 12305ms linear infinite}@keyframes k5{0%,15.238%{opacity:0}15.248%,100%{opacity:1}}
+.l6{animation:k6 12305ms linear infinite}@keyframes k6{0%,15.685%{opacity:0}15.695%,100%{opacity:1}}
+.l7{animation:k7 12305ms linear infinite}@keyframes k7{0%,16.132%{opacity:0}16.142%,100%{opacity:1}}
+.l8{animation:k8 12305ms linear infinite}@keyframes k8{0%,16.579%{opacity:0}16.589%,100%{opacity:1}}
+.l9{animation:k9 12305ms linear infinite}@keyframes k9{0%,17.026%{opacity:0}17.036%,100%{opacity:1}}
+.l10{animation:k10 12305ms linear infinite}@keyframes k10{0%,17.473%{opacity:0}17.483%,100%{opacity:1}}
+.l11{animation:k11 12305ms linear infinite}@keyframes k11{0%,17.920%{opacity:0}17.930%,100%{opacity:1}}
+.l12{animation:k12 12305ms linear infinite}@keyframes k12{0%,18.367%{opacity:0}18.377%,100%{opacity:1}}
+.l13{animation:k13 12305ms linear infinite}@keyframes k13{0%,18.813%{opacity:0}18.823%,100%{opacity:1}}
+.l14{animation:k14 12305ms linear infinite}@keyframes k14{0%,19.260%{opacity:0}19.270%,100%{opacity:1}}
+.l15{animation:k15 12305ms linear infinite}@keyframes k15{0%,19.707%{opacity:0}19.717%,100%{opacity:1}}
+.l16{animation:k16 12305ms linear infinite}@keyframes k16{0%,20.154%{opacity:0}20.164%,100%{opacity:1}}
+.l17{animation:k17 12305ms linear infinite}@keyframes k17{0%,20.601%{opacity:0}20.611%,100%{opacity:1}}
+.l18{animation:k18 12305ms linear infinite}@keyframes k18{0%,21.048%{opacity:0}21.058%,100%{opacity:1}}
+.l19{animation:k19 12305ms linear infinite}@keyframes k19{0%,21.495%{opacity:0}21.505%,100%{opacity:1}}
+.l20{animation:k20 12305ms linear infinite}@keyframes k20{0%,21.942%{opacity:0}21.952%,100%{opacity:1}}
+.l21{animation:k21 12305ms linear infinite}@keyframes k21{0%,22.389%{opacity:0}22.399%,100%{opacity:1}}
+.l22{animation:k22 12305ms linear infinite}@keyframes k22{0%,22.836%{opacity:0}22.846%,100%{opacity:1}}
+.l23{animation:k23 12305ms linear infinite}@keyframes k23{0%,23.283%{opacity:0}23.293%,100%{opacity:1}}
+.l24{animation:k24 12305ms linear infinite}@keyframes k24{0%,23.730%{opacity:0}23.740%,100%{opacity:1}}
+.l25{animation:k25 12305ms linear infinite}@keyframes k25{0%,24.177%{opacity:0}24.187%,100%{opacity:1}}
+.l26{animation:k26 12305ms linear infinite}@keyframes k26{0%,24.624%{opacity:0}24.634%,100%{opacity:1}}
+.l27{animation:k27 12305ms linear infinite}@keyframes k27{0%,25.071%{opacity:0}25.081%,100%{opacity:1}}
+.l28{animation:k28 12305ms linear infinite}@keyframes k28{0%,25.518%{opacity:0}25.528%,100%{opacity:1}}
+.l29{animation:k29 12305ms linear infinite}@keyframes k29{0%,25.965%{opacity:0}25.975%,100%{opacity:1}}
+.l30{animation:k30 12305ms linear infinite}@keyframes k30{0%,26.412%{opacity:0}26.422%,100%{opacity:1}}
 .cur{animation:blink 1s steps(1,end) infinite}
 .type{transform:scaleX(0);transform-origin:0 0;
-  animation:type 12085ms steps(22,end) infinite}
-@keyframes type{0%{transform:scaleX(0)}7.447%,100%{transform:scaleX(1)}}
+  animation:type 12305ms steps(22,end) infinite}
+@keyframes type{0%{transform:scaleX(0)}7.314%,100%{transform:scaleX(1)}}
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){
 .ln{opacity:1;animation:none}
@@ -44,8 +48,8 @@
 .type{transform:scaleX(1);animation:none}
 }
 </style>
-<rect width="746" height="542" rx="10" fill="#12161c"/>
-<rect x="0.75" y="0.75" width="744.5" height="540.5" rx="9.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
+<rect width="746" height="606" rx="10" fill="#12161c"/>
+<rect x="0.75" y="0.75" width="744.5" height="604.5" rx="9.25" fill="none" stroke="#242b35" stroke-width="1.5"/>
 <text x="22" y="25" fill="#8b98a9" font-size="11" font-weight="600" xml:space="preserve">llm-audit</text>
 <text x="724" y="25" fill="#6b7789" font-size="10" text-anchor="end">OWASP LLM Top 10 · TypeScript</text>
 <line x1="0" y1="37" x2="746" y2="37" stroke="#242b35" stroke-width="1"/>
@@ -68,9 +72,13 @@
 <text class="ln l17" y="364" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="331.00" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        only catches the inline-constructor shape.</tspan></text>
 <text class="ln l19" y="396" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    1 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="185.36" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">import OpenAI from "openai";</tspan></text>
 <text class="ln l20" y="412" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    2 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan></text>
-<text class="ln l22" y="444" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="430.30" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">      ⋮  54 more lines — the rest of the report, then the summary</tspan></text>
-<text class="ln l23" y="460" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">3 findings</tspan><tspan x="88.20" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="101.44" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">1 error</tspan><tspan x="147.78" textLength="19.86" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> · </tspan><tspan x="167.64" textLength="59.58" lengthAdjust="spacingAndGlyphs" fill="#f0b429">2 warning</tspan><tspan x="227.22" textLength="264.80" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  in 1 file · 3 of 12 rules fired · 1.4s</tspan></text>
-<text class="ln l24" y="476" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="72.82" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">Start here:</tspan><tspan x="94.82" textLength="145.64" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> hardcoded-llm-api-key</tspan><tspan x="240.46" textLength="483.26" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> — 1 error, the largest cluster.  `llm-audit rules hardcoded-llm-api-key`</tspan></text>
-<text class="ln l25" y="492" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Why each rule exists:</tspan><tspan x="161.02" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md</tspan></text>
-<text class="ln l26" y="508" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="105.92" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Gate this in CI:</tspan><tspan x="127.92" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> llm-audit scan --fail-on error  </tspan><tspan x="346.38" textLength="198.60" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">(or --sarif for code scanning)</tspan></text>
+<text class="ln l21" y="428" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    3 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="542.84" lengthAdjust="spacingAndGlyphs" fill="#c792ea">const openai = new OpenAI({ apiKey: "sk-proj-AAAA1111BBBB2222CCCC3333DDDD4444" });</tspan></text>
+<text class="ln l22" y="444" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    4 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan></text>
+<text class="ln l23" y="460" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    5 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="278.04" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">export async function POST(req: Request) {</tspan></text>
+<text class="ln l25" y="492" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="430.30" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">      ⋮  50 more lines — the rest of the report, then the summary</tspan></text>
+<text class="ln l26" y="508" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="397.20" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">────────────────────────────────────────────────────────────</tspan></text>
+<text class="ln l27" y="524" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">3 findings</tspan><tspan x="88.20" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="101.44" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">1 error</tspan><tspan x="147.78" textLength="19.86" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> · </tspan><tspan x="167.64" textLength="59.58" lengthAdjust="spacingAndGlyphs" fill="#f0b429">2 warning</tspan><tspan x="227.22" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  in 1 file · 3 of 12 rules fired</tspan></text>
+<text class="ln l28" y="540" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="72.82" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">Start here:</tspan><tspan x="94.82" textLength="145.64" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> hardcoded-llm-api-key</tspan><tspan x="240.46" textLength="483.26" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> — 1 error, the largest cluster.  `llm-audit rules hardcoded-llm-api-key`</tspan></text>
+<text class="ln l29" y="556" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Why each rule exists:</tspan><tspan x="161.02" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md</tspan></text>
+<text class="ln l30" y="572" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="105.92" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Gate this in CI:</tspan><tspan x="127.92" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> llm-audit scan --fail-on error  </tspan><tspan x="346.38" textLength="198.60" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">(or --sarif for code scanning)</tspan></text>
 </svg>
