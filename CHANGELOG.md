@@ -9,6 +9,15 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Fixed
+
+- The GitHub Action `init` installs carried the same mislabeled SHA pin this
+  repo had: `actions/checkout` commented `# v6.0.2` while the SHA was v4.3.1
+  upstream. Anyone who ran `init` got that comment in their repository. Both
+  actions now pin v7.0.1 and v7.0.0 with comments that match, and a test checks
+  every pin in the template against the upstream tag refs, so a pin that names
+  the wrong version fails the build.
+
 ### Changed
 
 - Every document is in the author's own voice now, the README first. 135 em

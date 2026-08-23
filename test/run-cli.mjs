@@ -277,6 +277,46 @@ check("doctor warns when a hook is installed that cannot run", () => {
   });
 });
 
+// The workflow we install into other people's repositories pins its actions by
+// SHA. A pin whose comment names a different version than the SHA is worse than
+// no comment: it is an audit trail that lies. This repo shipped one for months.
+//
+// Synchronous on purpose. `check` does not await, so an async body would report
+// PASS before its assertions ran.
+check("the installed workflow's action pins match their version comments", () => {
+  const workflow = readFileSync(join(PKG_ROOT, "templates", "github-action.yml"), "utf8");
+  const pins = [...workflow.matchAll(/uses: (actions\/[\w-]+)@([0-9a-f]{40})\s+# (v[\d.]+)/g)];
+  assert(pins.length > 0, "expected SHA-pinned actions in the template");
+
+  for (const [, action, sha, claimed] of pins) {
+    const r = spawnSync(
+      "curl",
+      ["-sS", "--max-time", "10", `https://api.github.com/repos/${action}/git/refs/tags`],
+      { encoding: "utf8" }
+    );
+    // Offline, rate limited, or no curl: skip rather than fail the suite.
+    if (r.status !== 0 || !r.stdout) return;
+    let tags;
+    try {
+      tags = JSON.parse(r.stdout);
+    } catch {
+      return;
+    }
+    if (!Array.isArray(tags)) return;
+
+    const matching = tags
+      .filter((t) => t.object && t.object.sha === sha)
+      .map((t) => t.ref.replace("refs/tags/", ""));
+    if (matching.length === 0) return;
+
+    assert(
+      matching.includes(claimed),
+      `${action} is pinned to ${sha.slice(0, 7)} but commented ${claimed}; ` +
+        `upstream tags that SHA as ${matching.join(", ")}`
+    );
+  }
+});
+
 check("docs/RULES.md ships with the package", () => {
   const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf8"));
   assert(
