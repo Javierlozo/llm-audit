@@ -7,6 +7,8 @@
   ·
   <a href="#why-not-just-paibest-practices">vs. Semgrep</a>
   ·
+  <a href="#a-report-you-can-hand-to-someone-else">Report</a>
+  ·
   <a href="#machine-readable-output-ci-agents-dashboards">JSON / SARIF</a>
   ·
   <a href="#adopt-in-your-project">Adopt in CI</a>
@@ -125,7 +127,8 @@ it permanent, see **Adopt in your project** below.
 
 ## Machine-readable output (CI, agents, dashboards)
 
-`scan` supports two structured output formats for non-human consumers:
+`scan` supports two machine-readable output formats for non-human consumers
+(and a human-readable HTML report, covered below):
 
 ```bash
 # Versioned JSON envelope (stable schema, schemaVersion: 1).
@@ -185,7 +188,7 @@ JSON envelope shape:
 ```jsonc
 {
   "schemaVersion": 1,
-  "tool": { "name": "llm-audit", "version": "0.2.0" },
+  "tool": { "name": "llm-audit", "version": "0.4.0" },
   "scannedPaths": ["src"],
   "summary": { "findings": 0 },
   "findings": [
@@ -204,8 +207,9 @@ JSON envelope shape:
 }
 ```
 
-`scan` exits **0** when there are no findings, **1** when there are, regardless
-of output format.
+By default `scan` exits **0** when there are no findings and **1** when there
+are, regardless of output format. `--fail-on <level>` moves that threshold
+without changing what gets reported.
 
 ## Using with Claude Code, Cursor, or Codex CLI
 
@@ -321,7 +325,7 @@ npm i -D llm-audit
 …or pin a version directly in the workflow file:
 
 ```yaml
-- run: npx llm-audit@0.2.0 scan
+- run: npx llm-audit@0.4.0 scan
 ```
 
 ## Why
@@ -384,11 +388,17 @@ The long-form writeup lives in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODE
 ## Project layout
 
 ```
-rules/      Semgrep YAML rules, one per file
-src/cli.mjs CLI entry: scan, init
-templates/  Files installed by `llm-audit init` (husky hook, GH Action)
-test/       Vulnerable + safe fixtures per rule
-docs/       BRIEF.md (pitch), RULES.md (rule plan)
+rules/          Semgrep YAML rules, one per file
+src/cli.mjs     CLI entry: scan, demo, doctor, rules, init
+src/report.mjs  The standalone HTML report
+src/rule-docs.mjs
+                Parses docs/RULES.md — the teaching material both the
+                `rules <id>` command and the report render
+templates/      Files installed by `llm-audit init` (husky hook, GH Action)
+test/           Vulnerable + safe fixtures per rule, plus the CLI suite
+tools/          Dev-only: regenerates the animated README hero
+docs/           RULES.md (rule reference, read at runtime), BRIEF.md (pitch),
+                AI-FAILURE-MODES.md, COMPETITIVE-LANDSCAPE.md, SECURITY-AUDIT.md
 ```
 
 ## Author

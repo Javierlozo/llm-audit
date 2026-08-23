@@ -9,6 +9,8 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-22
+
 ### Added
 
 - **`scan --html <file>`** writes a standalone, shareable HTML report: findings
