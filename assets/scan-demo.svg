@@ -1,11 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="653" height="542" viewBox="0 0 653 542" role="img" aria-label="Running npx llm-audit scan src: two findings in a chat route handler, a hardcoded provider key and model output parsed without a schema" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">
 <title>npx llm-audit scan src</title>
 <style>
-.ln{opacity:0;animation:in .01s linear forwards}
+/* Base state is the FINISHED frame, not a blank one: a renderer that does not
+   run CSS animations (thumbnailers, previews, older readers) then shows the
+   whole report instead of an empty terminal. The animation overrides this
+   while it runs. */
+.ln{opacity:1}
+.l0{animation:k0 12085ms linear infinite}@keyframes k0{0%,13.240%{opacity:0}13.250%,100%{opacity:1}}
+.l1{animation:k1 12085ms linear infinite}@keyframes k1{0%,13.695%{opacity:0}13.705%,100%{opacity:1}}
+.l2{animation:k2 12085ms linear infinite}@keyframes k2{0%,14.150%{opacity:0}14.160%,100%{opacity:1}}
+.l3{animation:k3 12085ms linear infinite}@keyframes k3{0%,14.605%{opacity:0}14.615%,100%{opacity:1}}
+.l4{animation:k4 12085ms linear infinite}@keyframes k4{0%,15.060%{opacity:0}15.070%,100%{opacity:1}}
+.l5{animation:k5 12085ms linear infinite}@keyframes k5{0%,15.515%{opacity:0}15.525%,100%{opacity:1}}
+.l6{animation:k6 12085ms linear infinite}@keyframes k6{0%,15.970%{opacity:0}15.980%,100%{opacity:1}}
+.l7{animation:k7 12085ms linear infinite}@keyframes k7{0%,16.425%{opacity:0}16.435%,100%{opacity:1}}
+.l8{animation:k8 12085ms linear infinite}@keyframes k8{0%,16.880%{opacity:0}16.890%,100%{opacity:1}}
+.l9{animation:k9 12085ms linear infinite}@keyframes k9{0%,17.336%{opacity:0}17.346%,100%{opacity:1}}
+.l10{animation:k10 12085ms linear infinite}@keyframes k10{0%,17.791%{opacity:0}17.801%,100%{opacity:1}}
+.l11{animation:k11 12085ms linear infinite}@keyframes k11{0%,18.246%{opacity:0}18.256%,100%{opacity:1}}
+.l12{animation:k12 12085ms linear infinite}@keyframes k12{0%,18.701%{opacity:0}18.711%,100%{opacity:1}}
+.l13{animation:k13 12085ms linear infinite}@keyframes k13{0%,19.156%{opacity:0}19.166%,100%{opacity:1}}
+.l14{animation:k14 12085ms linear infinite}@keyframes k14{0%,19.611%{opacity:0}19.621%,100%{opacity:1}}
+.l15{animation:k15 12085ms linear infinite}@keyframes k15{0%,20.066%{opacity:0}20.076%,100%{opacity:1}}
+.l16{animation:k16 12085ms linear infinite}@keyframes k16{0%,20.521%{opacity:0}20.531%,100%{opacity:1}}
+.l17{animation:k17 12085ms linear infinite}@keyframes k17{0%,20.976%{opacity:0}20.986%,100%{opacity:1}}
+.l18{animation:k18 12085ms linear infinite}@keyframes k18{0%,21.432%{opacity:0}21.442%,100%{opacity:1}}
+.l19{animation:k19 12085ms linear infinite}@keyframes k19{0%,21.887%{opacity:0}21.897%,100%{opacity:1}}
+.l20{animation:k20 12085ms linear infinite}@keyframes k20{0%,22.342%{opacity:0}22.352%,100%{opacity:1}}
+.l21{animation:k21 12085ms linear infinite}@keyframes k21{0%,22.797%{opacity:0}22.807%,100%{opacity:1}}
+.l22{animation:k22 12085ms linear infinite}@keyframes k22{0%,23.252%{opacity:0}23.262%,100%{opacity:1}}
+.l23{animation:k23 12085ms linear infinite}@keyframes k23{0%,23.707%{opacity:0}23.717%,100%{opacity:1}}
+.l24{animation:k24 12085ms linear infinite}@keyframes k24{0%,24.162%{opacity:0}24.172%,100%{opacity:1}}
+.l25{animation:k25 12085ms linear infinite}@keyframes k25{0%,24.617%{opacity:0}24.627%,100%{opacity:1}}
+.l26{animation:k26 12085ms linear infinite}@keyframes k26{0%,25.072%{opacity:0}25.082%,100%{opacity:1}}
 .cur{animation:blink 1s steps(1,end) infinite}
-.type{transform:scaleX(0);transform-origin:0 0;animation:type 900ms steps(22,end) forwards}
-@keyframes in{to{opacity:1}}
-@keyframes type{to{transform:scaleX(1)}}
+.type{transform:scaleX(0);transform-origin:0 0;
+  animation:type 12085ms steps(22,end) infinite}
+@keyframes type{0%{transform:scaleX(0)}7.447%,100%{transform:scaleX(1)}}
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){
 .ln{opacity:1;animation:none}
@@ -21,24 +52,24 @@
 <clipPath id="typing"><rect class="type" x="35.24" y="49" width="145.64" height="16"/></clipPath>
 <text x="22" y="60" fill="#4ec9a5" font-size="11" textLength="13.24" lengthAdjust="spacingAndGlyphs" xml:space="preserve">$ </text>
 <text x="35.24" y="60" fill="#e8edf4" font-size="11" textLength="145.64" lengthAdjust="spacingAndGlyphs" clip-path="url(#typing)" xml:space="preserve">npx llm-audit scan src</text>
-<rect class="cur" x="183.88" y="50" width="6.62" height="13" fill="#4ec9a5" style="animation-delay:900ms"/>
-<text class="ln" y="108" font-size="11" xml:space="preserve" style="animation-delay:1655ms"><tspan x="22.00" textLength="165.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">src/app/api/chat/route.ts</tspan><tspan x="187.50" textLength="79.44" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  3 findings</tspan></text>
-<text class="ln" y="140" font-size="11" xml:space="preserve" style="animation-delay:1765ms"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#f2777a">✗</tspan><tspan x="41.86" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="48.48" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">error  </tspan><tspan x="94.82" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="101.44" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">hardcoded-llm-api-key</tspan><tspan x="240.46" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="253.70" textLength="33.10" lengthAdjust="spacingAndGlyphs" fill="#f0b429">LLM06</tspan><tspan x="286.80" textLength="52.96" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  line 3</tspan></text>
-<text class="ln" y="156" font-size="11" xml:space="preserve" style="animation-delay:1820ms"><tspan x="22.00" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      An LLM provider API key appears to be hardcoded in source.</tspan></text>
-<text class="ln" y="188" font-size="11" xml:space="preserve" style="animation-delay:1930ms"><tspan x="22.00" textLength="509.74" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      Inline keys leak via git history, client bundles, logs, error messages,</tspan></text>
-<text class="ln" y="204" font-size="11" xml:space="preserve" style="animation-delay:1985ms"><tspan x="22.00" textLength="476.64" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      and screenshots. Even after rotation, a leaked key is a real-money</tspan></text>
-<text class="ln" y="220" font-size="11" xml:space="preserve" style="animation-delay:2040ms"><tspan x="22.00" textLength="99.30" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      incident.</tspan></text>
-<text class="ln" y="252" font-size="11" xml:space="preserve" style="animation-delay:2150ms"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#6aa9ff">      Fix:</tspan></text>
-<text class="ln" y="284" font-size="11" xml:space="preserve" style="animation-delay:2260ms"><tspan x="22.00" textLength="483.26" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Read keys from environment variables, validated at startup with a</tspan></text>
-<text class="ln" y="300" font-size="11" xml:space="preserve" style="animation-delay:2315ms"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        schema (e.g. zod). Default-deny on missing keys.</tspan></text>
-<text class="ln" y="316" font-size="11" xml:space="preserve" style="animation-delay:2370ms"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - For platforms that support it (Vercel AI Gateway, AWS Bedrock), use</tspan></text>
-<text class="ln" y="332" font-size="11" xml:space="preserve" style="animation-delay:2425ms"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        OIDC / workload identity instead of static keys.</tspan></text>
-<text class="ln" y="348" font-size="11" xml:space="preserve" style="animation-delay:2480ms"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Run `gitleaks` or `trufflehog` in CI as a backstop, since this rule</tspan></text>
-<text class="ln" y="364" font-size="11" xml:space="preserve" style="animation-delay:2535ms"><tspan x="22.00" textLength="331.00" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        only catches the inline-constructor shape.</tspan></text>
-<text class="ln" y="396" font-size="11" xml:space="preserve" style="animation-delay:2645ms"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    3 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="542.84" lengthAdjust="spacingAndGlyphs" fill="#c792ea">const openai = new OpenAI({ apiKey: "sk-proj-AAAA1111BBBB2222CCCC3333DDDD4444" });</tspan></text>
-<text class="ln" y="444" font-size="11" xml:space="preserve" style="animation-delay:2810ms"><tspan x="22.00" textLength="430.30" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">      ⋮  41 more lines — the rest of the report, then the summary</tspan></text>
-<text class="ln" y="460" font-size="11" xml:space="preserve" style="animation-delay:2865ms"><tspan x="22.00" textLength="397.20" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">────────────────────────────────────────────────────────────</tspan></text>
-<text class="ln" y="476" font-size="11" xml:space="preserve" style="animation-delay:2920ms"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">3 findings</tspan><tspan x="88.20" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="101.44" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">1 error</tspan><tspan x="147.78" textLength="19.86" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> · </tspan><tspan x="167.64" textLength="59.58" lengthAdjust="spacingAndGlyphs" fill="#f0b429">2 warning</tspan><tspan x="227.22" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  in 1 file · 3 of 12 rules fired</tspan></text>
-<text class="ln" y="492" font-size="11" xml:space="preserve" style="animation-delay:2975ms"><tspan x="22.00" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Why each rule exists:</tspan><tspan x="161.02" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md</tspan></text>
-<text class="ln" y="508" font-size="11" xml:space="preserve" style="animation-delay:3030ms"><tspan x="22.00" textLength="105.92" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Gate this in CI:</tspan><tspan x="127.92" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> llm-audit scan --fail-on error  </tspan><tspan x="346.38" textLength="198.60" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">(or --sarif for code scanning)</tspan></text>
+<rect class="cur" x="183.88" y="50" width="6.62" height="13" fill="#4ec9a5"/>
+<text class="ln l1" y="108" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="165.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">src/app/api/chat/route.ts</tspan><tspan x="187.50" textLength="79.44" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  3 findings</tspan></text>
+<text class="ln l3" y="140" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#f2777a">✗</tspan><tspan x="41.86" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="48.48" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">error  </tspan><tspan x="94.82" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="101.44" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">hardcoded-llm-api-key</tspan><tspan x="240.46" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="253.70" textLength="33.10" lengthAdjust="spacingAndGlyphs" fill="#f0b429">LLM06</tspan><tspan x="286.80" textLength="52.96" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  line 3</tspan></text>
+<text class="ln l4" y="156" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      An LLM provider API key appears to be hardcoded in source.</tspan></text>
+<text class="ln l6" y="188" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="509.74" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      Inline keys leak via git history, client bundles, logs, error messages,</tspan></text>
+<text class="ln l7" y="204" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="476.64" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      and screenshots. Even after rotation, a leaked key is a real-money</tspan></text>
+<text class="ln l8" y="220" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="99.30" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      incident.</tspan></text>
+<text class="ln l10" y="252" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#6aa9ff">      Fix:</tspan></text>
+<text class="ln l12" y="284" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="483.26" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Read keys from environment variables, validated at startup with a</tspan></text>
+<text class="ln l13" y="300" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        schema (e.g. zod). Default-deny on missing keys.</tspan></text>
+<text class="ln l14" y="316" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - For platforms that support it (Vercel AI Gateway, AWS Bedrock), use</tspan></text>
+<text class="ln l15" y="332" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="370.72" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        OIDC / workload identity instead of static keys.</tspan></text>
+<text class="ln l16" y="348" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="496.50" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">      - Run `gitleaks` or `trufflehog` in CI as a backstop, since this rule</tspan></text>
+<text class="ln l17" y="364" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="331.00" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">        only catches the inline-constructor shape.</tspan></text>
+<text class="ln l19" y="396" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="35.24" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">    3 │</tspan><tspan x="81.58" textLength="6.62" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> </tspan><tspan x="88.20" textLength="542.84" lengthAdjust="spacingAndGlyphs" fill="#c792ea">const openai = new OpenAI({ apiKey: "sk-proj-AAAA1111BBBB2222CCCC3333DDDD4444" });</tspan></text>
+<text class="ln l22" y="444" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="430.30" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">      ⋮  41 more lines — the rest of the report, then the summary</tspan></text>
+<text class="ln l23" y="460" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="397.20" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">────────────────────────────────────────────────────────────</tspan></text>
+<text class="ln l24" y="476" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="66.20" lengthAdjust="spacingAndGlyphs" fill="#e8edf4" font-weight="600">3 findings</tspan><tspan x="88.20" textLength="13.24" lengthAdjust="spacingAndGlyphs" fill="#e8edf4">  </tspan><tspan x="101.44" textLength="46.34" lengthAdjust="spacingAndGlyphs" fill="#f2777a">1 error</tspan><tspan x="147.78" textLength="19.86" lengthAdjust="spacingAndGlyphs" fill="#8b98a9"> · </tspan><tspan x="167.64" textLength="59.58" lengthAdjust="spacingAndGlyphs" fill="#f0b429">2 warning</tspan><tspan x="227.22" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">  in 1 file · 3 of 12 rules fired</tspan></text>
+<text class="ln l25" y="492" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="139.02" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Why each rule exists:</tspan><tspan x="161.02" textLength="423.68" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md</tspan></text>
+<text class="ln l26" y="508" font-size="11" xml:space="preserve"><tspan x="22.00" textLength="105.92" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">Gate this in CI:</tspan><tspan x="127.92" textLength="218.46" lengthAdjust="spacingAndGlyphs" fill="#e8edf4"> llm-audit scan --fail-on error  </tspan><tspan x="346.38" textLength="198.60" lengthAdjust="spacingAndGlyphs" fill="#8b98a9">(or --sarif for code scanning)</tspan></text>
 </svg>

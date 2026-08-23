@@ -158,11 +158,19 @@ function render(lines) {
   const rows = lines.length + 2;
   const height = PAD_TOP + rows * LINE_H + PAD_BOTTOM;
 
-  // Timing: type the command, hold while semgrep runs, then stream output.
+  // Timing. The hero sits below the fold, so a play-once animation is over
+  // before most readers scroll to it. The whole timeline loops instead: type,
+  // stream the report, then hold the finished frame long enough that the loop
+  // reads as a pause rather than a flicker.
   const TYPE_MS = 900;
   const THINK_MS = 700;
   const LINE_MS = 55;
+  const HOLD_MS = 9000;
   const startOutput = TYPE_MS + THINK_MS;
+  const CYCLE_MS = startOutput + lines.length * LINE_MS + HOLD_MS;
+  const pct = (ms) => ((ms / CYCLE_MS) * 100).toFixed(3);
+  // A hair of separation so the "off" and "on" stops never collapse.
+  const STEP = 0.01;
 
   const out = [];
   out.push(
@@ -174,12 +182,30 @@ function render(lines) {
   out.push(`<title>npx llm-audit scan src</title>`);
 
   // Motion is decoration here; readers who ask for less get the finished frame.
+  // One keyframe set per line: animation-delay only applies to the first
+  // iteration, so a looping reveal has to carry its timing as percentages.
+  const lineRules = lines
+    .map((_, i) => {
+      const at = pct(startOutput + i * LINE_MS);
+      return (
+        `.l${i}{animation:k${i} ${CYCLE_MS}ms linear infinite}` +
+        `@keyframes k${i}{0%,${at}%{opacity:0}${(Number(at) + STEP).toFixed(3)}%,100%{opacity:1}}`
+      );
+    })
+    .join("\n");
+
+  // Motion is decoration here; readers who ask for less get the finished frame.
   out.push(`<style>
-.ln{opacity:0;animation:in .01s linear forwards}
+/* Base state is the FINISHED frame, not a blank one: a renderer that does not
+   run CSS animations (thumbnailers, previews, older readers) then shows the
+   whole report instead of an empty terminal. The animation overrides this
+   while it runs. */
+.ln{opacity:1}
+${lineRules}
 .cur{animation:blink 1s steps(1,end) infinite}
-.type{transform:scaleX(0);transform-origin:0 0;animation:type ${TYPE_MS}ms steps(${COMMAND.length},end) forwards}
-@keyframes in{to{opacity:1}}
-@keyframes type{to{transform:scaleX(1)}}
+.type{transform:scaleX(0);transform-origin:0 0;
+  animation:type ${CYCLE_MS}ms steps(${COMMAND.length},end) infinite}
+@keyframes type{0%{transform:scaleX(0)}${pct(TYPE_MS)}%,100%{transform:scaleX(1)}}
 @keyframes blink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){
 .ln{opacity:1;animation:none}
@@ -231,12 +257,11 @@ function render(lines) {
   out.push(
     `<rect class="cur" x="${(cmdX + cmdW + 3).toFixed(2)}" ` +
       `y="${y(0) - FONT + 1}" width="${CHAR_W.toFixed(2)}" height="${FONT + 2}" ` +
-      `fill="#4ec9a5" style="animation-delay:${TYPE_MS}ms"/>`
+      `fill="#4ec9a5"/>`
   );
 
   lines.forEach((line, i) => {
     const row = i + 2;
-    const delay = startOutput + i * LINE_MS;
     const spans = parseAnsi(line);
     if (!spans.length) return;
     const chunks = [];
@@ -255,8 +280,8 @@ function render(lines) {
       col += s.text.length;
     }
     out.push(
-      `<text class="ln" y="${y(row)}" font-size="${FONT}" xml:space="preserve" ` +
-        `style="animation-delay:${delay}ms">${chunks.join("")}</text>`
+      `<text class="ln l${i}" y="${y(row)}" font-size="${FONT}" ` +
+        `xml:space="preserve">${chunks.join("")}</text>`
     );
   });
 
