@@ -303,6 +303,31 @@ if (!hasSemgrep()) {
     assert(/Filtered view/.test(r.stdout), "expected the filtered-view caveat");
   });
 
+  check("a misspelled --rule is refused, never reported as clean", () => {
+    const target = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+    const r = run(["scan", "--rule", "hardcoded-llm-api-kye", target]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/unknown rule/.test(r.stderr), "expected an unknown-rule error");
+    assert(/did you mean/.test(r.stderr), "expected a suggestion");
+    assert(!/0 findings/.test(r.stdout), "a typo must never render as a clean result");
+  });
+
+  check("a filtered run with no hits does not claim to be clean", () => {
+    const r = run([
+      "scan",
+      "--rule",
+      "secrets-in-prompt-context",
+      join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts"),
+    ]);
+    assertEqual(r.status, 0, "exit code");
+    assert(/0 findings/.test(r.stdout), "expected the zero-findings line");
+    assert(
+      !/clean\./.test(r.stdout),
+      "a filtered run must not describe the codebase as clean"
+    );
+    assert(/for the selected rule/.test(r.stdout), "expected the filter to be named");
+  });
+
   check("scan --severity error drops warnings", () => {
     const r = run([
       "scan",

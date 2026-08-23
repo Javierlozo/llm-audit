@@ -9,6 +9,16 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Fixed
+
+- A misspelled `--rule` id filtered every real finding away and printed
+  `0 findings — clean` with exit 0. On a file with three hardcoded keys,
+  `--rule hardcoded-llm-api-kye` was a silent pass. Unknown rule ids are now
+  refused with a suggestion and exit 2.
+- A filtered run that finds nothing no longer describes the codebase as
+  "clean" — it names the filter that was applied and points at the unfiltered
+  command. Only part of the pack was allowed to speak; saying "clean" overclaims.
+
 ## [0.4.2] — 2026-08-22
 
 ### Added

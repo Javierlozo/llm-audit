@@ -394,6 +394,15 @@ function renderHuman(envelope, meta = {}) {
 
   if (findings.length === 0) {
     console.log("");
+    if (meta.filtered) {
+      // "Clean" would overclaim: only part of the pack was allowed to speak.
+      console.log(
+        `${c.green}\u2713 0 findings${c.reset} for the selected ` +
+          `${meta.filterLabel || "filter"}.` +
+          `${c.dim}  Run \`llm-audit scan\` unfiltered for the whole picture.${c.reset}`
+      );
+      return;
+    }
     console.log(
       `${c.green}\u2713 0 findings${c.reset} \u2014 clean.` +
         `${c.dim}  ${ruleCount} rules run${c.reset}`
@@ -643,6 +652,26 @@ function cmdScan(args) {
   }
   const targetPaths = paths.length ? paths : ["."];
 
+  // A misspelled rule id must never look like a clean bill of health. Without
+  // this, `--rule hardcoded-llm-api-kye` filters every real finding away and
+  // reports "0 findings — clean", which in CI is a silent pass on a file full
+  // of hardcoded keys.
+  if (ruleFilter.size) {
+    const known = new Set(
+      readdirSync(RULES_DIR)
+        .filter((f) => f.endsWith(".yaml"))
+        .map((f) => f.replace(/\.yaml$/, ""))
+    );
+    for (const id of ruleFilter) {
+      if (known.has(id)) continue;
+      process.stderr.write(`unknown rule: ${id}\n`);
+      const near = nearest(id, [...known]);
+      if (near) process.stderr.write(`did you mean \`${near}\`?\n`);
+      process.stderr.write("run `llm-audit rules` for the full list.\n");
+      process.exit(2);
+    }
+  }
+
   // Arguments are good; now the environment has to be.
   ensureSemgrep();
 
@@ -691,6 +720,11 @@ function cmdScan(args) {
       failOn,
       compact,
       filtered: Boolean(ruleFilter.size || minSeverity),
+      filterLabel: ruleFilter.size
+        ? `rule${ruleFilter.size === 1 ? "" : "s"} (${[...ruleFilter].join(", ")})`
+        : minSeverity
+          ? `severity (${minSeverity.toLowerCase()} or worse)`
+          : null,
     });
     if (htmlPath) {
       writeHtmlReport(envelope, htmlPath, targetPaths, {
