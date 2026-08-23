@@ -11,6 +11,17 @@ independently of the package. It is at `1` and has not changed.
 
 ### Fixed
 
+- `scan` on a path that does not exist printed nothing at all and exited 2.
+  Semgrep fails silently under `--quiet`, so the user got a status code and no
+  explanation. Paths are checked before the scan runs, and a semgrep failure
+  with an empty stderr now says so instead of exiting mute.
+- `doctor` reported a missing pre-commit hook and a missing CI workflow as
+  "present", because both branches shared one label. It now says "missing",
+  which is what the accompanying "run `llm-audit init` to install" always
+  implied.
+
+### Fixed
+
 - The README hero cropped mid-snippet once findings gained context lines, so
   it showed the two lines *above* the offending code and not the code itself —
   an advertisement for the tool finding nothing. The crop extends to a block

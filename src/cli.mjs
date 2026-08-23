@@ -192,7 +192,15 @@ function runSemgrepJson(targetPaths) {
   );
 
   if (r.status !== 0 && r.status !== 1) {
-    process.stderr.write(r.stderr || "");
+    // --quiet means semgrep can fail with nothing on stderr. Exiting silently
+    // leaves the user with a status code and no idea what happened.
+    const detail = (r.stderr || "").trim();
+    process.stderr.write(
+      detail
+        ? detail + "\n"
+        : `error: semgrep exited ${r.status} without a message.\n` +
+          "run `llm-audit doctor` to check the engine and the rule pack.\n"
+    );
     process.exit(r.status ?? 1);
   }
 
@@ -820,6 +828,16 @@ function cmdScan(args) {
   }
   const targetPaths = paths.length ? paths : ["."];
 
+  // Same reasoning as the flag check: a path the user mistyped is their error,
+  // and semgrep's own failure for a missing target is silent under --quiet.
+  // Without this, `llm-audit scan /wrong/path` printed nothing at all.
+  for (const p of targetPaths) {
+    if (existsSync(p)) continue;
+    process.stderr.write(`error: no such file or directory: ${p}\n`);
+    process.stderr.write("scan takes paths to scan; run `llm-audit --help` for usage.\n");
+    process.exit(2);
+  }
+
   // A misspelled rule id must never look like a clean bill of health. Without
   // this, `--rule hardcoded-llm-api-kye` filters every real finding away and
   // reports "0 findings — clean", which in CI is a silent pass on a file full
@@ -1422,7 +1440,7 @@ async function cmdDoctor() {
     status(".husky/pre-commit hook present", "ok");
   } else {
     status(
-      ".husky/pre-commit hook present",
+      ".husky/pre-commit hook missing",
       "warn",
       "run `npx llm-audit init` to install"
     );
@@ -1432,7 +1450,7 @@ async function cmdDoctor() {
     status(".github/workflows/llm-audit.yml present", "ok");
   } else {
     status(
-      ".github/workflows/llm-audit.yml present",
+      ".github/workflows/llm-audit.yml missing",
       "warn",
       "run `npx llm-audit init` to install"
     );

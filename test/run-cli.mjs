@@ -192,6 +192,20 @@ check("every shipped rule has teaching material in docs/RULES.md", () => {
   }
 });
 
+check("doctor does not describe a missing file as present", () => {
+  withTempDir((dir) => {
+    const r = run(["doctor"], { cwd: dir });
+    const lines = r.stdout.split("\n").filter((l) => /pre-commit|workflows/.test(l));
+    assert(lines.length > 0, "expected doctor to report on the hook and workflow");
+    for (const line of lines) {
+      // A warn line about a file that is not there must not say "present".
+      if (/\[warn\]/.test(line)) {
+        assert(!/present/.test(line), `doctor contradicts itself: ${line.trim()}`);
+      }
+    }
+  });
+});
+
 check("docs/RULES.md ships with the package", () => {
   const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf8"));
   assert(
@@ -374,6 +388,13 @@ if (!hasSemgrep()) {
     // The rationale belongs to the rule, so it appears exactly once.
     const rationales = r.stdout.split("Inline keys leak").length - 1;
     assertEqual(rationales, 1, "rationale repetitions");
+  });
+
+  check("a path that does not exist is named, not silently swallowed", () => {
+    const r = run(["scan", "/nonexistent-path-for-tests"]);
+    assertEqual(r.status, 2, "exit code");
+    assert(/no such file or directory/.test(r.stderr), "expected the path in the error");
+    assertEqual(r.stdout.trim(), "", "nothing should be reported as scanned");
   });
 
   check("scan rejects an unknown --by value", () => {
