@@ -9,6 +9,18 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Changed
+
+- Every document is in the author's own voice now, the README first. 135 em
+  dashes across the project and not one contraction, which reads as generated.
+  Same facts, same commands; shorter sentences and the balanced-clause
+  constructions removed. `docs/RULES.md` matters most, since the CLI reads it at
+  run time and both `rules <id>` and the HTML report render that prose.
+- CI actions moved to `actions/checkout` v7.0.1 and `actions/setup-node` v7.0.0,
+  with the version comments corrected. The pinned SHA said `# v6.0.2` and was
+  actually v4.3.1 upstream. For a project that pins by SHA on purpose, the
+  comment is the only reviewable part of the pin.
+
 ### Added
 
 - `llm-audit uninstall` removes the pre-commit hook, the CI workflow, and the
