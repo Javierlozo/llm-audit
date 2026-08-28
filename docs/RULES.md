@@ -159,7 +159,7 @@ Grouped by the release each one shipped in.
   endpoints that validate correctly without a schema library, and a rule that
   fires on correct code is a rule people turn off.
 
-### v1 (shipped)
+### v1 rule set
 
 #### `system-prompt-leakage-in-client-bundle`
 
