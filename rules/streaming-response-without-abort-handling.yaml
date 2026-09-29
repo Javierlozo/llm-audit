@@ -21,7 +21,7 @@ rules:
         - Rate limit the endpoint. Streaming endpoints are the most
           expensive thing you expose.
     metadata:
-      owasp-llm: LLM10
+      owasp-llm: LLM06
       category: unbounded-consumption
       cwe:
         - "CWE-400"

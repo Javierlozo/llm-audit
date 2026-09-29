@@ -8,7 +8,7 @@ rules:
 
       Model output is untrusted by definition: an attacker upstream in
       the prompt can steer it. Treating it as code, shell, or raw HTML
-      is OWASP LLM02 (Insecure Output Handling) and a direct path to
+      is OWASP LLM10 (Improper Output Handling) and a direct path to
       RCE / XSS / command injection.
 
       Fix:
@@ -18,7 +18,7 @@ rules:
         - For tool-calling, use a fixed allowlist of tool names and
           validate arguments with a schema.
     metadata:
-      owasp-llm: LLM02
+      owasp-llm: LLM10
       category: insecure-output-handling
       cwe:
         - "CWE-79"

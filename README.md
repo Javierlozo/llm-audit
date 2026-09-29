@@ -8,7 +8,7 @@
 </p>
 
 > Static analysis for **TypeScript and JavaScript** LLM-application code.
-> Twelve rules mapped to the OWASP LLM Top 10, run at commit time.
+> Twelve rules mapped to the OWASP LLM Top 10 (2026 edition), run at commit time.
 
 ```bash
 brew install semgrep     # the engine, one-time (or: pipx install semgrep)
@@ -197,7 +197,7 @@ JSON envelope shape:
     {
       "ruleId": "model-output-parsed-without-schema",
       "severity": "WARNING",
-      "owasp": "LLM02",
+      "owasp": "LLM10",
       "cwe": ["CWE-20"],
       "path": "src/app/api/route.ts",
       "startLine": 61,
@@ -375,14 +375,14 @@ entry and backed by a vulnerable + safe fixture in `test/fixtures/<rule-id>/`.
 | `untrusted-input-concatenated-into-prompt-template` | LLM01 | User input interpolated into a single-string prompt with no role boundary |
 | `untrusted-retrieval-context-in-system-role` | LLM01 | Retrieved documents given system authority (indirect prompt injection) |
 | `request-body-to-llm-without-schema` | LLM01 | Raw request body reaching an LLM call with no schema validation at the boundary |
-| `llm-output-insecure-handling` | LLM02 | Model output flows into `eval`, raw HTML, or shell |
-| `model-output-parsed-without-schema` | LLM02 | `JSON.parse` on model output without a schema validator on the path |
-| `model-output-rendered-as-markdown-without-sanitization` | LLM02 | Markdown renderer with HTML enabled or sanitization disabled on model output |
-| `hardcoded-llm-api-key` | LLM06 | Inline LLM provider API key in source |
-| `secrets-in-prompt-context` | LLM06 | Environment secrets interpolated into prompt text sent to the provider |
-| `system-prompt-leakage-in-client-bundle` | LLM07 | Prompt-shaped constants inside a `'use client'` module, shipped to the browser |
-| `tool-call-dispatch-without-allowlist` | LLM08 | Model-chosen tool name dispatched without an allowlist |
-| `streaming-response-without-abort-handling` | LLM10 | Streaming call in a request handler with no `signal` forwarded |
+| `llm-output-insecure-handling` | LLM10 | Model output flows into `eval`, raw HTML, or shell |
+| `model-output-parsed-without-schema` | LLM10 | `JSON.parse` on model output without a schema validator on the path |
+| `model-output-rendered-as-markdown-without-sanitization` | LLM10 | Markdown renderer with HTML enabled or sanitization disabled on model output |
+| `hardcoded-llm-api-key` | LLM02 | Inline LLM provider API key in source |
+| `secrets-in-prompt-context` | LLM02 | Environment secrets interpolated into prompt text sent to the provider |
+| `system-prompt-leakage-in-client-bundle` | LLM08 | Prompt-shaped constants inside a `'use client'` module, shipped to the browser |
+| `tool-call-dispatch-without-allowlist` | LLM03 | Model-chosen tool name dispatched without an allowlist |
+| `streaming-response-without-abort-handling` | LLM06 | Streaming call in a request handler with no `signal` forwarded |
 
 [`docs/RULES.md`](docs/RULES.md) has the full reasoning for each one: what it
 catches, **why an AI assistant tends to write that pattern**, and the fix. The

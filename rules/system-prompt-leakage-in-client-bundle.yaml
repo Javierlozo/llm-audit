@@ -11,8 +11,8 @@ rules:
       not a secret in the cryptographic sense, but it is usually the only
       thing enforcing your product's guardrails, and publishing it hands an
       attacker the exact text to write around. Prompts that name internal
-      tools, data sources or policy are worse. This is OWASP LLM07 (System
-      Prompt Leakage).
+      tools, data sources or policy are worse. This is OWASP LLM08 (Hidden
+      Context Exposure, formerly System Prompt Leakage).
 
       Fix:
         - Keep the system prompt in a server module: a route handler, a
@@ -22,7 +22,7 @@ rules:
         - Never put prompt text in a `NEXT_PUBLIC_` variable. That prefix
           means "inline this into the browser bundle."
     metadata:
-      owasp-llm: LLM07
+      owasp-llm: LLM08
       category: system-prompt-leakage
       cwe:
         - "CWE-200"

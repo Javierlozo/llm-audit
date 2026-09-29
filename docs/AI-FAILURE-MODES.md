@@ -70,7 +70,7 @@ disable tool restrictions, or impersonate the developer.
 ## 2. Insecure output handling: model output to dangerous sinks
 
 **Catching rule:** [`llm-output-insecure-handling`](../rules/llm-output-insecure-handling.yaml)
-**OWASP:** LLM02
+**OWASP:** LLM10 (Improper Output Handling)
 
 ### What it looks like
 
@@ -165,7 +165,7 @@ demo from 2022 and it still works.
 ## 4. Tool-calling without an allowlist
 
 **Planned rule:** `tool-call-without-allowlist`
-**OWASP:** LLM08 (Excessive Agency)
+**OWASP:** LLM03 (Excessive Agency)
 
 ### What it looks like
 
@@ -208,7 +208,7 @@ allowlist, this lets the attacker:
 ## 5. Parsing model output as JSON without a schema
 
 **Planned rule:** `model-output-parsed-without-schema`
-**OWASP:** LLM02
+**OWASP:** LLM10 (Improper Output Handling)
 
 ### What it looks like
 
@@ -247,7 +247,7 @@ which the model isn't actually obligated to honor.
 ## 6. Sensitive context inlined into the prompt
 
 **Planned rule:** `sensitive-context-in-prompt`
-**OWASP:** LLM06 (Sensitive Information Disclosure)
+**OWASP:** LLM02 (Sensitive Information Disclosure)
 
 ### What it looks like
 
@@ -281,7 +281,7 @@ Anything in the prompt should be treated as semi-public.
 ## 7. System prompt leakage in client-visible code
 
 **Planned rule:** `system-prompt-leakage-in-client-bundle`
-**OWASP:** LLM07
+**OWASP:** LLM08 (Hidden Context Exposure)
 
 ### What it looks like
 

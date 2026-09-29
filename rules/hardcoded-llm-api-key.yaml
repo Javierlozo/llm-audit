@@ -18,7 +18,7 @@ rules:
         - Run `gitleaks` or `trufflehog` in CI as a backstop, since
           this rule only catches the inline-constructor shape.
     metadata:
-      owasp-llm: LLM06
+      owasp-llm: LLM02
       category: ai-code-smell
       cwe:
         - "CWE-798"

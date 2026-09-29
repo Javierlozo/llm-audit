@@ -64,15 +64,15 @@ fixture, and includes a "why an AI assistant tends to write this" note in
 
 1. **LLM01: Prompt Injection, untrusted input in `system` role** (v0 ✅)
 2. **LLM01: User input concatenated into a prompt template without separator** (v0 ✅)
-3. **LLM02: Insecure Output Handling, model output to dangerous sink** (v0 ✅)
-4. **LLM02: `JSON.parse` on raw model output without schema validation** (v0 ✅)
-5. **LLM06: Hardcoded LLM API keys in source** (v0 ✅)
-6. **LLM08: Excessive Agency, tool-calling dispatch without an allowlist** (v0.1 ✅)
-7. **LLM06: Sensitive context (env, secrets) interpolated into prompt text** (v0.1 ✅)
+3. **LLM10: Improper Output Handling, model output to dangerous sink** (v0 ✅)
+4. **LLM10: `JSON.parse` on raw model output without schema validation** (v0 ✅)
+5. **LLM02: Hardcoded LLM API keys in source** (v0 ✅)
+6. **LLM03: Excessive Agency, tool-calling dispatch without an allowlist** (v0.1 ✅)
+7. **LLM02: Sensitive context (env, secrets) interpolated into prompt text** (v0.1 ✅)
 8. **LLM01: Route handler forwards request body to a model without a schema** (v0.1 ✅)
-9. **LLM07: System prompt leakage, system text inlined in client-visible code** (v1 ✅)
+9. **LLM08: Hidden context exposure (system prompt leakage), system text inlined in client-visible code** (v1 ✅)
 10. **LLM01: Retrieval context, untrusted document text mixed into a `system` role** (v1 ✅)
-11. **LLM09: Overreliance, model output rendered as code or markdown without sanitization** (v1 ✅)
+11. **LLM10: Improper Output Handling, model output rendered as code or markdown without sanitization** (v1 ✅)
 12. **AI-CODE-SMELL: Streaming response without backpressure / abort handling** (v1 ✅)
 
 ## Differentiation

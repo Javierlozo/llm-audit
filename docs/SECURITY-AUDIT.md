@@ -138,7 +138,7 @@ broader than this workflow needs.
 
 The internal test runner parsed `semgrep --json` output with bare
 `JSON.parse`, which is the same shape that `llm-audit`'s own
-`model-output-parsed-without-schema` rule (LLM02) flags in user code.
+`model-output-parsed-without-schema` rule (LLM10) flags in user code.
 The source here is trusted (semgrep's documented JSON schema, not LLM
 output), so this is informational rather than a real vulnerability.
 But a security tool whose internal code triggers its own rules

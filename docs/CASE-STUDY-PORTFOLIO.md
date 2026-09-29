@@ -4,6 +4,9 @@
 > Next.js + OpenAI app deployed at https://luislozoya.com. One real true
 > positive on three LLM-touching files, with zero false positives. Fixed
 > in the same session.
+>
+> Written against the pre-2026 OWASP labels. Under the 2026 edition,
+> the rule that fired maps to LLM10 (Improper Output Handling).
 
 ## Context
 

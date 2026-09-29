@@ -59,7 +59,7 @@ or `pipx install semgrep`).
   "findings": [
     {
       "ruleId": "model-output-parsed-without-schema",
-      "owasp": "LLM02",
+      "owasp": "LLM10",
       "severity": "WARNING",
       "cwe": ["CWE-20"],
       "path": "src/app/api/chat/route.ts",
@@ -89,16 +89,16 @@ address. For each entry:
    |---|---|---|
    | `untrusted-input-in-system-prompt` | LLM01 | Keep `system` static. Move user input to the `user` role. Validate input shape with `zod` / `valibot` at the request boundary. |
    | `untrusted-input-concatenated-into-prompt-template` | LLM01 | Replace single-string `prompt:` with the `messages: [...]` API and explicit role boundaries. Static `system`, untrusted text only in `user`. |
-   | `llm-output-insecure-handling` | LLM02 | Validate output against a schema (zod). Sanitize before rendering as HTML (`DOMPurify`). Never pass model output to `eval`, `Function`, or a shell sink. |
-   | `model-output-parsed-without-schema` | LLM02 | Wrap `JSON.parse(modelOutput)` directly in `Schema.safeParse(...)` or `Schema.parse(...)`. Or use `generateObject` / `responseFormat: json_schema` so the model is constrained at the API. |
-   | `hardcoded-llm-api-key` | LLM06 | Read keys from `process.env`, validated at startup with `zod`. Use OIDC / workload identity where the platform supports it. |
-   | `tool-call-dispatch-without-allowlist` | LLM08 | Switch on a closed set of literal tool names, or check membership in an explicit allowlist before dispatch. Validate tool arguments with a schema before the handler runs. |
-   | `secrets-in-prompt-context` | LLM06 | Keep credentials in the SDK client config or request headers, never in prompt text. Reference resources by opaque id and resolve them server-side after the model responds. |
+   | `llm-output-insecure-handling` | LLM10 | Validate output against a schema (zod). Sanitize before rendering as HTML (`DOMPurify`). Never pass model output to `eval`, `Function`, or a shell sink. |
+   | `model-output-parsed-without-schema` | LLM10 | Wrap `JSON.parse(modelOutput)` directly in `Schema.safeParse(...)` or `Schema.parse(...)`. Or use `generateObject` / `responseFormat: json_schema` so the model is constrained at the API. |
+   | `hardcoded-llm-api-key` | LLM02 | Read keys from `process.env`, validated at startup with `zod`. Use OIDC / workload identity where the platform supports it. |
+   | `tool-call-dispatch-without-allowlist` | LLM03 | Switch on a closed set of literal tool names, or check membership in an explicit allowlist before dispatch. Validate tool arguments with a schema before the handler runs. |
+   | `secrets-in-prompt-context` | LLM02 | Keep credentials in the SDK client config or request headers, never in prompt text. Reference resources by opaque id and resolve them server-side after the model responds. |
    | `request-body-to-llm-without-schema` | LLM01 | Parse the request body with `zod` / `valibot` before use, with an explicit max length on free-text fields. Pass validated values into the `user` role only. Rate limit the endpoint. |
-   | `system-prompt-leakage-in-client-bundle` | LLM07 | Move the prompt to a route handler, Server Action, or a module marked `import "server-only"`. The client sends only the user's text. |
+   | `system-prompt-leakage-in-client-bundle` | LLM08 | Move the prompt to a route handler, Server Action, or a module marked `import "server-only"`. The client sends only the user's text. |
    | `untrusted-retrieval-context-in-system-role` | LLM01 | Keep `system` static. Put retrieved text in a delimited `user` block and instruct the model to treat it as data, not instructions. |
-   | `model-output-rendered-as-markdown-without-sanitization` | LLM02 | Leave raw HTML disabled, or add `rehype-sanitize` after `rehype-raw` and restrict the allowed schema. Never `sanitize: false` / `html: true` on model output. |
-   | `streaming-response-without-abort-handling` | LLM10 | Pass `abortSignal: request.signal` (AI SDK) or `{ signal: request.signal }` (OpenAI, Anthropic). Rate limit the endpoint. |
+   | `model-output-rendered-as-markdown-without-sanitization` | LLM10 | Leave raw HTML disabled, or add `rehype-sanitize` after `rehype-raw` and restrict the allowed schema. Never `sanitize: false` / `html: true` on model output. |
+   | `streaming-response-without-abort-handling` | LLM06 | Pass `abortSignal: request.signal` (AI SDK) or `{ signal: request.signal }` (OpenAI, Anthropic). Rate limit the endpoint. |
 
 3. Re-run the scan against the same paths until the `findings` array
    is empty.
@@ -112,7 +112,7 @@ address. For each entry:
   function unless you can show why it neutralizes the specific failure
   mode the rule names. The canonical fixes above are the validated
   remediations.
-- **Do not** ignore an `LLM01` or `LLM02` finding because "the catch
+- **Do not** ignore an `LLM01` or `LLM10` finding because "the catch
   block handles it." That's the exact pattern the rule warns about.
 
 ## Useful adjacent commands

@@ -12,7 +12,7 @@ rules:
       output means any `<img onerror>`, `<script>`, or `<a href="javascript:">`
       the model can be steered into emitting becomes live DOM in your page.
       A prompt-injected document, tool result, or retrieved page is enough
-      to reach this. OWASP LLM02 (Insecure Output Handling), and the
+      to reach this. OWASP LLM10 (Improper Output Handling), and the
       cross-site scripting is real XSS, not a theoretical one.
 
       Fix:
@@ -23,7 +23,7 @@ rules:
         - Restrict the allowed schema to the tags and attributes you
           actually use. Default-deny beats blocklisting.
     metadata:
-      owasp-llm: LLM02
+      owasp-llm: LLM10
       category: insecure-output-handling
       cwe:
         - "CWE-79"

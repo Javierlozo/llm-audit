@@ -6,7 +6,7 @@ rules:
     message: |
       Model output is being parsed with `JSON.parse` and used without
       schema validation. The model can return malformed JSON,
-      unexpected fields, or attacker-steered content (LLM02 Insecure
+      unexpected fields, or attacker-steered content (LLM10 Improper
       Output Handling). Parsing succeeds, downstream code trusts the
       shape, and security-relevant fields can be silently injected.
 
@@ -18,7 +18,7 @@ rules:
           property access.
         - Default-deny on unknown fields.
     metadata:
-      owasp-llm: LLM02
+      owasp-llm: LLM10
       category: insecure-output-handling
       cwe:
         - "CWE-20"

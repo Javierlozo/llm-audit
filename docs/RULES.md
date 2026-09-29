@@ -15,7 +15,8 @@ a developer sees when a rule fires.
 ## Rule index
 
 Twelve rules. Jump to any of them for what it catches, why an AI assistant
-tends to write that pattern, and the fix.
+tends to write that pattern, and the fix. OWASP IDs follow the 2026 edition of the OWASP Top 10 for
+LLM Applications.
 
 | Rule | OWASP | CWE |
 |---|---|---|
@@ -23,14 +24,14 @@ tends to write that pattern, and the fix.
 | [`untrusted-input-concatenated-into-prompt-template`](#untrusted-input-concatenated-into-prompt-template) | LLM01: Prompt Injection | CWE-77 |
 | [`untrusted-retrieval-context-in-system-role`](#untrusted-retrieval-context-in-system-role) | LLM01: Prompt Injection | CWE-77, CWE-94 |
 | [`request-body-to-llm-without-schema`](#request-body-to-llm-without-schema) | LLM01: Prompt Injection | CWE-20, CWE-77 |
-| [`llm-output-insecure-handling`](#llm-output-insecure-handling) | LLM02: Insecure Output Handling | CWE-79, CWE-94, CWE-78 |
-| [`model-output-parsed-without-schema`](#model-output-parsed-without-schema) | LLM02: Insecure Output Handling | CWE-20 |
-| [`model-output-rendered-as-markdown-without-sanitization`](#model-output-rendered-as-markdown-without-sanitization) | LLM02: Insecure Output Handling | CWE-79, CWE-80 |
-| [`hardcoded-llm-api-key`](#hardcoded-llm-api-key) | LLM06: Sensitive Information Disclosure | CWE-798 |
-| [`secrets-in-prompt-context`](#secrets-in-prompt-context) | LLM06: Sensitive Information Disclosure | CWE-200, CWE-532 |
-| [`system-prompt-leakage-in-client-bundle`](#system-prompt-leakage-in-client-bundle) | LLM07: System Prompt Leakage | CWE-200, CWE-540 |
-| [`tool-call-dispatch-without-allowlist`](#tool-call-dispatch-without-allowlist) | LLM08: Excessive Agency | CWE-470, CWE-77 |
-| [`streaming-response-without-abort-handling`](#streaming-response-without-abort-handling) | LLM10: Unbounded Consumption | CWE-400, CWE-770 |
+| [`llm-output-insecure-handling`](#llm-output-insecure-handling) | LLM10: Improper Output Handling | CWE-79, CWE-94, CWE-78 |
+| [`model-output-parsed-without-schema`](#model-output-parsed-without-schema) | LLM10: Improper Output Handling | CWE-20 |
+| [`model-output-rendered-as-markdown-without-sanitization`](#model-output-rendered-as-markdown-without-sanitization) | LLM10: Improper Output Handling | CWE-79, CWE-80 |
+| [`hardcoded-llm-api-key`](#hardcoded-llm-api-key) | LLM02: Sensitive Information Disclosure | CWE-798 |
+| [`secrets-in-prompt-context`](#secrets-in-prompt-context) | LLM02: Sensitive Information Disclosure | CWE-200, CWE-532 |
+| [`system-prompt-leakage-in-client-bundle`](#system-prompt-leakage-in-client-bundle) | LLM08: Hidden Context Exposure | CWE-200, CWE-540 |
+| [`tool-call-dispatch-without-allowlist`](#tool-call-dispatch-without-allowlist) | LLM03: Excessive Agency | CWE-470, CWE-77 |
+| [`streaming-response-without-abort-handling`](#streaming-response-without-abort-handling) | LLM06: Unbounded Consumption | CWE-400, CWE-770 |
 
 ---
 
@@ -55,7 +56,7 @@ Grouped by the release each one shipped in.
 
 #### `llm-output-insecure-handling`
 
-- **OWASP:** LLM02: Insecure Output Handling
+- **OWASP:** LLM10: Improper Output Handling
 - **CWE:** CWE-79, CWE-94, CWE-78
 - **Catches:** the result of an LLM call (`generateText`, `chat.completions.create`,
   `messages.create`) being passed into `eval`, `new Function`, `child_process.exec`,
@@ -82,7 +83,7 @@ Grouped by the release each one shipped in.
 
 #### `model-output-parsed-without-schema`
 
-- **OWASP:** LLM02: Insecure Output Handling
+- **OWASP:** LLM10: Improper Output Handling
 - **CWE:** CWE-20
 - **Catches:** `JSON.parse` invoked on model output (`generateText().text`,
   `chat.completions.create()...content`, etc.) without a zod / valibot schema
@@ -95,7 +96,7 @@ Grouped by the release each one shipped in.
 
 #### `hardcoded-llm-api-key`
 
-- **OWASP:** LLM06 (overlap with secret-scanning category)
+- **OWASP:** LLM02: Sensitive Information Disclosure (overlap with secret-scanning category)
 - **CWE:** CWE-798
 - **Catches:** inline string in `apiKey:` field of `new OpenAI(...)`,
   `new Anthropic(...)`, `createOpenAI(...)`, `createAnthropic(...)`, plus a
@@ -110,7 +111,7 @@ Grouped by the release each one shipped in.
 
 #### `tool-call-dispatch-without-allowlist`
 
-- **OWASP:** LLM08: Excessive Agency
+- **OWASP:** LLM03: Excessive Agency
 - **CWE:** CWE-470, CWE-77
 - **Catches:** a model-supplied tool name used as a dynamic index into a handler
   map (`handlers[call.toolName](args)`, `handlers[call.function.name](...)`,
@@ -125,7 +126,7 @@ Grouped by the release each one shipped in.
 
 #### `secrets-in-prompt-context`
 
-- **OWASP:** LLM06: Sensitive Information Disclosure
+- **OWASP:** LLM02: Sensitive Information Disclosure
 - **CWE:** CWE-200, CWE-532
 - **Catches:** `process.env.*` interpolated into a `system`, `prompt`, or
   `instructions` field, or into the content of a message entry.
@@ -163,7 +164,7 @@ Grouped by the release each one shipped in.
 
 #### `system-prompt-leakage-in-client-bundle`
 
-- **OWASP:** LLM07: System Prompt Leakage
+- **OWASP:** LLM08: Hidden Context Exposure
 - **CWE:** CWE-200, CWE-540
 - **Catches:** prompt-shaped constants (`SYSTEM_PROMPT`, `*instruction*`,
   `*persona*`, `*guardrail*`) or literal `system` / `instructions` fields
@@ -191,7 +192,7 @@ Grouped by the release each one shipped in.
 
 #### `model-output-rendered-as-markdown-without-sanitization`
 
-- **OWASP:** LLM02: Insecure Output Handling
+- **OWASP:** LLM10: Improper Output Handling
 - **CWE:** CWE-79, CWE-80
 - **Catches:** `rehype-raw` without `rehype-sanitize`, `allowDangerousHtml`,
   `marked` with `sanitize: false`, and `markdown-it` with `html: true`.
@@ -203,7 +204,7 @@ Grouped by the release each one shipped in.
 
 #### `streaming-response-without-abort-handling`
 
-- **OWASP:** LLM10: Unbounded Consumption
+- **OWASP:** LLM06: Unbounded Consumption
 - **CWE:** CWE-400, CWE-770
 - **Catches:** `streamText` / `streamObject` / a streaming SDK call inside a
   request handler with no `abortSignal` or `signal` forwarded.

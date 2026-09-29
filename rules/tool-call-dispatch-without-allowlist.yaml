@@ -12,7 +12,7 @@ rules:
       a handler map with it makes the model the router: prompt injection
       that changes which tool runs becomes remote code execution against
       whatever those handlers do (file writes, shell, payments, email).
-      This is OWASP LLM08 (Excessive Agency).
+      This is OWASP LLM03 (Excessive Agency).
 
       Fix:
         - Switch on a closed set of literal tool names, or check
@@ -22,7 +22,7 @@ rules:
         - Keep destructive tools behind a confirmation step or a
           separate, more restricted credential.
     metadata:
-      owasp-llm: LLM08
+      owasp-llm: LLM03
       category: excessive-agency
       cwe:
         - "CWE-470"

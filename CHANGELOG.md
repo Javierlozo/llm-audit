@@ -9,6 +9,25 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Changed
+
+- OWASP labels now follow the 2026 edition of the OWASP Top 10 for LLM
+  Applications. The rules carried a mix of 2023 and 2025 numbers. This is a
+  metadata change: rule IDs, the `scan --json` schema, and suppressions are
+  unchanged, but the `owasp` value on a finding can differ from earlier
+  versions.
+  - `llm-output-insecure-handling`, `model-output-parsed-without-schema`,
+    `model-output-rendered-as-markdown-without-sanitization`: LLM02 to LLM10
+    (Improper Output Handling)
+  - `hardcoded-llm-api-key`, `secrets-in-prompt-context`: LLM06 to LLM02
+    (Sensitive Information Disclosure)
+  - `tool-call-dispatch-without-allowlist`: LLM08 to LLM03 (Excessive Agency)
+  - `system-prompt-leakage-in-client-bundle`: LLM07 to LLM08 (Hidden Context
+    Exposure, formerly System Prompt Leakage)
+  - `streaming-response-without-abort-handling`: LLM10 to LLM06 (Unbounded
+    Consumption)
+  - The four LLM01 (Prompt Injection) rules are unchanged.
+
 ### Fixed
 
 - The installed GitHub Action ran `npm ci` before scanning. A static scan reads
