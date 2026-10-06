@@ -45,6 +45,9 @@ h1,h2,.eyebrow,.nav,.btn,.col-label,dt,.compare th,.group h3{font-family:var(--l
 .nav{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s4);flex-wrap:wrap;
   padding:var(--s5) 0 var(--s3);border-bottom:2px solid var(--ink);font-size:15px}
 .nav .word{font-size:21px;letter-spacing:-.01em;text-decoration:none}
+.brand{display:flex;align-items:baseline;gap:var(--s3);flex-wrap:wrap}
+.nav .by{font:15px var(--serif);color:var(--muted);text-decoration:none}
+.nav .by:hover{color:var(--amber-ink);text-decoration:underline}
 .nav-links{display:flex;gap:var(--s5);flex-wrap:wrap}
 .nav-links a{text-decoration:none;color:var(--ink-2)}
 .nav-links a:hover{color:var(--amber-ink)}
