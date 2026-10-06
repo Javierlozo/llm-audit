@@ -980,7 +980,7 @@ function printLearnFooter(envelope, { base, stripPrefix, filtered, learnCmd } = 
 // browser. `scan` is a share payload, or null for the lesson library. The
 // note goes to stderr when stdout is carrying machine output.
 function openPage(scan) {
-  const html = renderLearnPage({ scan, version: getVersion() });
+  const html = renderLearnPage({ scan, version: getVersion(), base: learnBase() });
   let file;
   try {
     const dir = mkdtempSync(join(tmpdir(), "llm-audit-learn-"));

@@ -52,8 +52,9 @@ const FAVICON =
  * @param opts.scan     a share payload (share.mjs buildPayload) to embed, or
  *                      null for the hosted page, which reads the fragment
  * @param opts.version  llm-audit version, shown in the footer
+ * @param opts.base     where "Copy share link" points from a local file
  */
-export function renderLearnPage({ scan = null, version = "" } = {}) {
+export function renderLearnPage({ scan = null, version = "", base = "" } = {}) {
   // Fonts ride along as data: URIs, so the page stays one file and the CSP
   // can keep refusing every network request.
   const font = (name) =>
@@ -93,7 +94,7 @@ export function renderLearnPage({ scan = null, version = "" } = {}) {
 <main id="app"><noscript><p>This page needs JavaScript to read the scan results. Nothing is sent anywhere; it all runs in your browser.</p></noscript></main>
 ${dataBlock("lessons", LESSONS)}
 ${dataBlock("examples", safeExamples())}
-${dataBlock("meta", { version })}
+${dataBlock("meta", { version, base })}
 ${scan ? dataBlock("scan", scan) : ""}
 <script>${js}</script>
 </body>

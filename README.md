@@ -20,12 +20,29 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
   <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler has three mistakes, a hardcoded key, model JSON trusted without checking, and an unchecked request body, each listed with its file and line, ending with the commands to read the lessons and copy a fix prompt" width="820"/>
   <br/>
   <sub>A real run against a real chat route handler. Generated from live CLI output by
-  <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
-  the risk, and the fix. Motion respects <code>prefers-reduced-motion</code>.</sub>
+  <code>npm run demo:svg</code>, not drawn by hand. Mistakes are grouped worst first, with
+  every place they occur. Motion respects <code>prefers-reduced-motion</code>.</sub>
 </p>
 
 <p>
-  <img src="assets/commands.svg" alt="What you can run: llm-audit demo before you adopt it, scan while you write, rules for one rule in full, scan --html for a shareable report, init to make it permanent, doctor when something is off" width="820"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-dark.png"/>
+    <img src="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-light.png" alt="The llm-audit learn page for a scan of a sample support bot: the headline reads 7 mistakes in 9 places, 5 errors and 4 warnings across 6 files, with a numbered contents list on the left and lesson 1, Your system prompt ships to the browser, showing the two flagged places in ChatBox.tsx with the matched lines highlighted" width="820"/>
+  </picture>
+  <br/>
+  <sub><code>npx llm-audit learn</code>: one lesson per mistake, with your own code in it.
+  The page is static and runs in your browser; nothing is uploaded.</sub>
+</p>
+
+<p>
+  <img src="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-fix.png" alt="Part of a lesson: how the mistake is used against you, as three numbered attack steps and the cost, followed by The fix, a ready-to-paste prompt listing every flagged file and line with the steps to fix them" width="560"/>
+  <br/>
+  <sub>Each lesson walks through the attack, then gives a fix prompt that already lists every
+  place to change. <code>npx llm-audit prompt 1</code> copies the same prompt from the terminal.</sub>
+</p>
+
+<p>
+  <img src="assets/commands.svg" alt="What you can run: llm-audit demo before you adopt it, scan while you write, learn when you want the why, prompt 1 when you are ready to fix, init to make it permanent, doctor when something is off" width="820"/>
 </p>
 
 <p>

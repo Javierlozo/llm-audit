@@ -9,6 +9,16 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Changed
+
+- The learn page moves a scan out of the address bar once it has read it,
+  into the tab's sessionStorage, so the URL reads `…/#l=<lesson>` instead of
+  a few kilobytes of data. Reloading still works. A "Copy share link" button
+  rebuilds the full link when you want to send it.
+- README screenshots of the learn page, in light and dark.
+
+## [0.9.0] — 2026-10-06
+
 ### Added
 
 - At a terminal, `scan` now groups findings by kind of mistake, worst first,

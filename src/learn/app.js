@@ -87,11 +87,37 @@
     };
   }
 
+  // A scan link carries a few kilobytes after the #. Once the page has read
+  // it, the data moves to this tab's sessionStorage and the address bar goes
+  // back to something a person can look at: #l=<lesson>. Reloading the tab
+  // still works; "Copy share link" rebuilds the full link on purpose.
+  const SESSION_KEY = "llm-audit:scan";
+  const session = {
+    get() {
+      try {
+        return sessionStorage.getItem(SESSION_KEY);
+      } catch {
+        return null;
+      }
+    },
+    set(r) {
+      try {
+        sessionStorage.setItem(SESSION_KEY, r);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+
   async function readScan() {
     const embedded = json("scan");
-    if (embedded) return { scan: validate(embedded), key: "local" };
+    if (embedded) return { scan: validate(embedded), key: "local", raw: embedded };
     const params = new URLSearchParams(location.hash.slice(1));
-    const r = params.get("r");
+    let r = params.get("r");
+    // No data in the address, but this tab was given a scan before and the
+    // address still points at a lesson: a reload, so use what was kept.
+    if (!r && params.has("l")) r = session.get();
     if (!r) return { scan: null };
     if (r.length > 200000) throw new Error("it is longer than any scan link should be");
     let raw;
@@ -100,7 +126,31 @@
     } catch {
       throw new Error("the data in it is incomplete or damaged");
     }
-    return { scan: validate(raw), key: r };
+    const scan = validate(raw);
+    if (params.get("r") && session.set(r)) {
+      params.delete("r");
+      if (!params.has("l")) params.set("l", "");
+      history.replaceState(null, "", `#${params.toString()}`);
+    }
+    return { scan, key: r };
+  }
+
+  async function deflate(text) {
+    const stream = new Blob([text]).stream().pipeThrough(new CompressionStream("deflate-raw"));
+    const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+    let bin = "";
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  }
+
+  // The full link, built only when someone asks to share. A page opened from
+  // a local file packs its embedded scan the same way share.mjs does.
+  async function shareUrl(key, raw, slug) {
+    const base = location.protocol.startsWith("http")
+      ? location.origin + location.pathname
+      : json("meta")?.base || "https://javierlozo.github.io/llm-audit/";
+    const r = key === "local" ? await deflate(JSON.stringify(raw)) : key;
+    return `${base}#r=${r}${slug ? `&l=${encodeURIComponent(slug)}` : ""}`;
   }
 
   // ── progress, kept per scan in this browser only ─────────────────────────
@@ -290,12 +340,14 @@
   }
 
   // ── the page ─────────────────────────────────────────────────────────────
-  function masthead() {
+  function masthead(onShare) {
+    const share = onShare ? h("button", { class: "btn", type: "button", title: "The link carries your code snippets, with secrets redacted" }, "Copy share link") : null;
+    if (share) share.addEventListener("click", () => onShare(share));
     return h(
       "div",
       { class: "masthead" },
       h("span", { class: "word" }, "llm-audit ", h("span", {}, "/ lessons")),
-      h("span", { class: "masthead-note" }, "A static page. Your results never leave this browser.")
+      h("span", { class: "masthead-end" }, h("span", { class: "masthead-note" }, "A static page. Your results never leave this browser."), share)
     );
   }
 
@@ -423,9 +475,10 @@
     const root = document.getElementById("app");
     let scan = null;
     let key = null;
+    let raw = null;
     let error = null;
     try {
-      ({ scan, key } = await readScan());
+      ({ scan, key, raw } = await readScan());
     } catch (err) {
       error = (err && err.message) || "unknown error";
     }
@@ -490,7 +543,16 @@
       if (focus) document.getElementById("lesson-title")?.focus({ preventScroll: true });
     }
 
-    root.replaceChildren(masthead(), top, h("div", { class: "layout" }, side, view), h(
+    const onShare = scan
+      ? async (button) => {
+          try {
+            await copy(await shareUrl(key, raw, items[current]?.lesson.slug), button);
+          } catch {
+            button.textContent = "Could not build the link";
+          }
+        }
+      : null;
+    root.replaceChildren(masthead(onShare), top, h("div", { class: "layout" }, side, view), h(
       "footer",
       { class: "page-foot muted small" },
       `llm-audit ${scan?.tool || VERSION}`,
@@ -501,7 +563,7 @@
     // A different link pasted into the same tab.
     addEventListener("hashchange", () => {
       const next = new URLSearchParams(location.hash.slice(1)).get("r");
-      if (next !== key && !(key === "local")) location.reload();
+      if (next && next !== key && key !== "local") location.reload();
     });
   }
 

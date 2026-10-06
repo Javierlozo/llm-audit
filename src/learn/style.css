@@ -53,6 +53,8 @@ button{font:inherit;color:inherit}
   padding:var(--s5) 0 var(--s3);border-bottom:2px solid var(--ink);font-size:15px;letter-spacing:.01em}
 .masthead .word{font-size:20px;letter-spacing:-.01em}
 .masthead .word span{color:var(--muted)}
+.masthead-end{display:flex;align-items:baseline;gap:var(--s4)}
+.masthead-end .btn{font-size:13px;padding:4px 10px;align-self:center}
 .masthead-note{font-family:var(--serif);font-weight:400;font-size:14px;color:var(--muted)}
 
 /* head of the report */
@@ -192,11 +194,15 @@ h3{margin:0;font-size:13px;line-height:1.35;letter-spacing:.09em;text-transform:
   .layout{grid-template-columns:minmax(0,1fr);gap:var(--s6);padding-top:var(--s5)}
   .side{position:static}
   .part{grid-template-columns:minmax(0,1fr);gap:var(--s3);margin-top:var(--s6)}
-  .masthead-note{display:none}
+  .masthead-end{display:flex;align-items:baseline;gap:var(--s4)}
+.masthead-end .btn{font-size:13px;padding:4px 10px;align-self:center}
+.masthead-note{display:none}
   .occ-loc .rule-id{margin-left:0;width:100%}
   body{font-size:16.5px}
 }
 @media print{
-  .side,.prompt-bar .btn,.lesson-foot,.masthead-note{display:none}
+  .side,.prompt-bar .btn,.lesson-foot,.masthead-end{display:flex;align-items:baseline;gap:var(--s4)}
+.masthead-end .btn{font-size:13px;padding:4px 10px;align-self:center}
+.masthead-note{display:none}
   .layout{grid-template-columns:1fr}
 }
