@@ -24,15 +24,19 @@ import {
   readFileSync,
   writeFileSync,
   mkdtempSync,
+  realpathSync,
+  chmodSync,
 } from "node:fs";
+import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { createInterface } from "node:readline";
-import { tmpdir } from "node:os";
+import { tmpdir, homedir } from "node:os";
 import { parseRuleDocs, readRuleMeta, readSafeExample } from "./rule-docs.mjs";
 import { renderHtmlReport } from "./report.mjs";
 import { buildPayload, learnLink, DEFAULT_LEARN_URL } from "./share.mjs";
 import { renderLearnPage } from "./learn.mjs";
+import { LESSONS, groupFindings, fixPrompt } from "./lessons.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -54,7 +58,7 @@ function getVersion() {
   }
 }
 
-const KNOWN_SUBCOMMANDS = ["demo", "scan", "init", "uninstall", "rules", "doctor"];
+const KNOWN_SUBCOMMANDS = ["demo", "scan", "learn", "prompt", "init", "uninstall", "rules", "doctor"];
 
 function levenshtein(a, b) {
   const m = a.length;
@@ -101,6 +105,9 @@ const SUBCOMMAND_ALIASES = {
   lint: "scan",
   audit: "scan",
   list: "rules",
+  lessons: "learn",
+  open: "learn",
+  fix: "prompt",
   help: "--help",
   version: "--version",
 };
@@ -790,31 +797,21 @@ function writeHtmlReport(envelope, htmlPath, targetPaths, filters = {}) {
 // ── The learn page ──────────────────────────────────────────────────────────
 // The terminal says what failed. The learn page teaches it: one lesson per
 // kind of mistake, every place it occurs, how it gets exploited, and a prompt
-// to fix it. It reaches the user two ways: a link whose fragment carries the
-// scan (nothing uploaded; see share.mjs), or --open, which writes the page to
-// a private temp file and opens it.
+// to fix it. Every page is the same static file (learn.mjs); a scan reaches it
+// either embedded in a private temp file (`learn`, `--open`) or in the URL
+// fragment of a share link (`--link`; nothing is uploaded, see share.mjs).
 
-function learnBase(flag) {
-  return flag || process.env.LLM_AUDIT_LEARN_URL || DEFAULT_LEARN_URL;
-}
-
-function shareOptions(stripPrefix, filtered) {
-  return {
-    context: (f) => {
-      const ctx = readContext(f.path, f.startLine, f.endLine);
-      return ctx ? { from: ctx.from, lines: ctx.lines } : null;
-    },
-    display: (p) => displayPath(p, stripPrefix),
-    filtered,
-  };
-}
-
-// The link holds code snippets, so by default it is shown to a person at a
-// terminal and kept out of CI logs, which are often public. --link forces it.
-function wantsLink(mode) {
-  if (mode === "always") return true;
-  if (mode === "never") return false;
+// A person at a terminal, as opposed to a hook, a pipe, or a CI runner. Only
+// they get the lesson view, the saved scan, and the learn hint; everything
+// else keeps the compact per-file output that hooks and CI logs rely on.
+function interactive() {
   return Boolean(process.stdout.isTTY) && !process.env.CI;
+}
+
+// Hints name the command the way the user ran it. Under npx or an npm
+// script, a bare `llm-audit` may not be on PATH.
+function self() {
+  return process.env.npm_command ? "npx llm-audit" : "llm-audit";
 }
 
 // OSC 8 makes "Open the lessons" itself clickable, instead of a few
@@ -832,6 +829,87 @@ function supportsHyperlinks() {
   );
 }
 
+const hyperlink = (url, text) => `\u001b]8;;${url}\u001b\\${text}\u001b]8;;\u001b\\`;
+
+function termWidth() {
+  return Math.min(Math.max(Number(process.env.COLUMNS) || process.stdout.columns || 80, 60), 100);
+}
+
+// ── The last scan, per project ──────────────────────────────────────────────
+// `learn` and `prompt` work from the last scan of this project, so a scan's
+// lessons are one short command away instead of a long URL. The file holds
+// code snippets (secrets redacted), so it lives in the user's cache directory
+// with owner-only permissions, never in the project.
+
+function cacheDir() {
+  if (process.env.LLM_AUDIT_CACHE_DIR) return process.env.LLM_AUDIT_CACHE_DIR;
+  if (process.platform === "darwin") return join(homedir(), "Library", "Caches", "llm-audit");
+  if (process.platform === "win32") {
+    return join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "llm-audit", "Cache");
+  }
+  return join(process.env.XDG_CACHE_HOME || join(homedir(), ".cache"), "llm-audit");
+}
+
+// One saved scan per project: the git root if there is one, so `learn` works
+// from any subdirectory, otherwise the working directory.
+function lastScanFile() {
+  const top = spawnSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" });
+  let root = top.status === 0 ? top.stdout.trim() : process.cwd();
+  try {
+    root = realpathSync(root);
+  } catch {}
+  const key = createHash("sha256").update(root).digest("hex").slice(0, 16);
+  return join(cacheDir(), "scans", `${key}.json`);
+}
+
+function saveLastScan(payload) {
+  try {
+    const file = lastScanFile();
+    mkdirSync(dirname(file), { recursive: true, mode: 0o700 });
+    writeFileSync(file, JSON.stringify({ savedAt: new Date().toISOString(), payload }), { mode: 0o600 });
+    chmodSync(file, 0o600);
+  } catch {
+    // A read-only home directory costs the user a shortcut, not the scan.
+  }
+}
+
+function loadLastScan() {
+  try {
+    const saved = JSON.parse(readFileSync(lastScanFile(), "utf8"));
+    return saved && saved.payload ? saved : null;
+  } catch {
+    return null;
+  }
+}
+
+// Saved payload rows back into the finding shape lessons work with.
+function payloadFindings(payload) {
+  return (payload.f || []).map(([ruleId, severity, path, startLine, endLine]) => ({
+    ruleId,
+    severity,
+    path,
+    startLine,
+    endLine,
+  }));
+}
+
+function learnBase(flag) {
+  return flag || process.env.LLM_AUDIT_LEARN_URL || DEFAULT_LEARN_URL;
+}
+
+function shareOptions(stripPrefix, filtered) {
+  return {
+    context: (f) => {
+      const ctx = readContext(f.path, f.startLine, f.endLine);
+      return ctx ? { from: ctx.from, lines: ctx.lines } : null;
+    },
+    display: (p) => displayPath(p, stripPrefix),
+    filtered,
+  };
+}
+
+// The full shareable URL. Printed only on request (--link), because it is
+// long and it carries code snippets.
 function printLearnLink(envelope, { base, stripPrefix, filtered } = {}) {
   const { url, detail } = learnLink(envelope, {
     ...shareOptions(stripPrefix, filtered),
@@ -840,8 +918,8 @@ function printLearnLink(envelope, { base, stripPrefix, filtered } = {}) {
   console.log("");
   if (!url) {
     console.log(
-      `${c.bold}Learn what's failing:${c.reset} too many findings to fit in a link. ` +
-        `Run with ${c.bold}--open${c.reset} to open the lessons from a local file.`
+      `${c.bold}Share link:${c.reset} too many findings to fit in a link. ` +
+        `\`${self()} learn\` opens them from a local file.`
     );
     return;
   }
@@ -851,32 +929,45 @@ function printLearnLink(envelope, { base, stripPrefix, filtered } = {}) {
       : detail === "match"
         ? " Surrounding lines were left out to keep it short."
         : " Code was left out to keep it short.";
-  if (supportsHyperlinks()) {
-    console.log(
-      `${c.bold}Learn what's failing:${c.reset} ` +
-        `\u001b]8;;${url}\u001b\\${c.yellow}Open the lessons \u2197${c.reset}\u001b]8;;\u001b\\`
-    );
-  } else {
-    console.log(`${c.bold}Learn what's failing:${c.reset}`);
-    console.log(url);
-  }
-  const width = Math.min(Math.max(Number(process.env.COLUMNS) || process.stdout.columns || 80, 60), 100);
+  console.log(`${c.bold}Share link:${c.reset}`);
+  console.log(url);
   const note =
-    "Your results are in the part after the #, which browsers never send to a server. " +
-    `It includes code snippets, with secrets redacted.${trimmed} ` +
-    "Prefer a local file? Add --open.";
-  console.log(`${c.dim}${wrap(note, width, "")}${c.reset}`);
+    "The results are in the part after the #, which browsers never send to a server. " +
+    `It includes code snippets, with secrets redacted.${trimmed}`;
+  console.log(`${c.dim}${wrap(note, termWidth(), "")}${c.reset}`);
 }
 
-// Write the learn page with this scan embedded, to a private temp directory,
-// and hand it to the system browser. The note goes to stderr when stdout is
-// carrying machine output.
-function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
-  const payload = buildPayload(envelope, {
-    ...shareOptions(stripPrefix, filtered),
-    detail: "context",
-  });
-  const html = renderLearnPage({ scan: payload, version: getVersion() });
+// The one next step after an interactive scan. `learnCmd` lets demo point at
+// its own page instead of the project's saved scan.
+function printLearnFooter(envelope, { base, stripPrefix, filtered, learnCmd } = {}) {
+  const cmd = learnCmd || `${self()} learn`;
+  const has = envelope.findings.length > 0;
+  console.log("");
+  if (!has) {
+    console.log(`${c.dim}See what was checked:${c.reset}  ${cmd}`);
+    return;
+  }
+  console.log(`Read the lessons, with your code and a fix prompt for each:`);
+  if (supportsHyperlinks()) {
+    const { url } = learnLink(envelope, { ...shareOptions(stripPrefix, filtered), base: learnBase(base) });
+    if (url) {
+      console.log(`  ${c.yellow}${hyperlink(url, "Open the lessons ↗")}${c.reset}${c.dim}  or ${cmd}${c.reset}`);
+    } else {
+      console.log(`  ${cmd}`);
+    }
+  } else {
+    console.log(`  ${c.bold}${cmd}${c.reset}`);
+  }
+  if (!learnCmd) {
+    console.log(`${c.dim}Copy a fix prompt for your AI tool:${c.reset}  ${self()} prompt 1`);
+  }
+}
+
+// Write a learn page to a private temp directory and hand it to the system
+// browser. `scan` is a share payload, or null for the lesson library. The
+// note goes to stderr when stdout is carrying machine output.
+function openPage(scan) {
+  const html = renderLearnPage({ scan, version: getVersion() });
   let file;
   try {
     const dir = mkdtempSync(join(tmpdir(), "llm-audit-learn-"));
@@ -884,7 +975,7 @@ function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
     writeFileSync(file, html, { mode: 0o600 });
   } catch (err) {
     process.stderr.write(`error: could not write the learn page: ${err.message}\n`);
-    return;
+    return false;
   }
 
   const say = (text) =>
@@ -895,7 +986,7 @@ function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
   // Tests and headless boxes set this to get the file without a browser.
   if (process.env.LLM_AUDIT_NO_BROWSER) {
     say(`\nLearn page written to ${file}\n`);
-    return;
+    return true;
   }
   const [cmd, args] =
     process.platform === "darwin"
@@ -909,6 +1000,233 @@ function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
       ? `\nOpened the lessons in your browser. ${c.dim}${file}${c.reset}\n`
       : `\nCould not open a browser. The learn page is at ${file}\n`
   );
+  return r.status === 0;
+}
+
+function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
+  return openPage(buildPayload(envelope, { ...shareOptions(stripPrefix, filtered), detail: "context" }));
+}
+
+// ── The lesson view ─────────────────────────────────────────────────────────
+// The default at a terminal. Same shape as the learn page: a headline, then
+// one numbered entry per kind of mistake with every place it occurs. The
+// numbers match the page and `prompt <n>`.
+
+function plural(n, word) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+function renderLessons(envelope, meta = {}) {
+  const width = termWidth();
+  const { findings } = envelope;
+  const paths = (envelope.scannedPaths || []).map((p) => displayPath(p, meta.stripPrefix)).join(", ") || ".";
+  const repo = envelope.repo;
+  const where =
+    meta.label ||
+    `scan of ${paths}` +
+      (repo ? ` · ${repo.branch || "detached"} @ ${repo.shortCommit}${repo.dirty ? " (uncommitted changes)" : ""}` : "");
+  const elapsed = meta.elapsedMs && !DETERMINISTIC ? ` · ${(meta.elapsedMs / 1000).toFixed(1)}s` : "";
+
+  console.log("");
+  console.log(`${c.bold}llm-audit${c.reset}${c.dim}  ·  ${where}${elapsed}${c.reset}`);
+  console.log("");
+
+  const ruleCount = meta.ruleCount ?? readdirSync(RULES_DIR).filter((f) => f.endsWith(".yaml")).length;
+  if (findings.length === 0) {
+    if (meta.filtered) {
+      console.log(`${c.green}✓ 0 findings${c.reset} for the selected ${meta.filterLabel || "filter"}.`);
+      console.log(`${c.dim}Other rules may still have findings. Run \`${self()} scan\` unfiltered for the whole picture.${c.reset}`);
+      return;
+    }
+    console.log(`${c.green}${c.bold}No mistakes found${c.reset}`);
+    console.log(`All ${ruleCount} checks passed. That means no obvious holes, not proof there are none.`);
+    return;
+  }
+
+  const { groups, unknown } = groupFindings(findings, LESSONS);
+  // A rule with no lesson still gets an entry, under its own name.
+  for (const f of unknown) {
+    groups.push({ lesson: { title: f.ruleId, slug: f.ruleId }, hits: [f], severity: f.severity });
+  }
+  const counts = new Map();
+  for (const f of findings) counts.set(f.severity, (counts.get(f.severity) || 0) + 1);
+  const sevWords = [...counts.entries()]
+    .sort((a, b) => sevRank(a[0]) - sevRank(b[0]))
+    .map(([sev, n]) => `${(SEV_COLOR[sev] || SEV_COLOR.INFO)()}${plural(n, sev.toLowerCase())}${c.reset}`);
+  const sevText = sevWords.length > 1 ? `${sevWords.slice(0, -1).join(", ")} and ${sevWords.at(-1)}` : sevWords[0];
+  const fileCount = new Set(findings.map((f) => f.path)).size;
+
+  console.log(`${c.bold}${plural(groups.length, "mistake")} in ${plural(findings.length, "place")}${c.reset}`);
+  console.log(`${sevText} across ${plural(fileCount, "file")}`);
+
+  const MAX_FILES = 6;
+  groups.forEach((g, i) => {
+    const no = String(i + 1).padStart(2);
+    const sev = (g.severity || "INFO").toLowerCase();
+    const right = `${sev}  ${plural(g.hits.length, "place")}`;
+    const title = g.lesson.title;
+    const gap = Math.max(2, width - 4 - title.length - right.length);
+    console.log("");
+    console.log(
+      `${c.bold}${no}  ${title}${c.reset}${" ".repeat(gap)}` +
+        `${(SEV_COLOR[g.severity] || SEV_COLOR.INFO)()}${sev}${c.reset}${c.dim}  ${plural(g.hits.length, "place")}${c.reset}`
+    );
+
+    const byFile = new Map();
+    for (const f of g.hits) {
+      const p = displayPath(f.path, meta.stripPrefix);
+      if (!byFile.has(p)) byFile.set(p, []);
+      byFile.get(p).push(f.startLine);
+    }
+    const files = [...byFile.entries()];
+    const shown = files.slice(0, MAX_FILES);
+    const col = Math.min(Math.max(...shown.map(([p]) => p.length)), width - 16);
+    for (const [p, lines] of shown) {
+      const uniq = [...new Set(lines)].sort((a, b) => a - b);
+      const list = uniq.length > 5 ? `${uniq.slice(0, 5).join(", ")}, …` : uniq.join(", ");
+      console.log(`    ${p.padEnd(col)}  ${c.dim}${list}${c.reset}`);
+    }
+    if (files.length > MAX_FILES) {
+      console.log(`    ${c.dim}and ${plural(files.length - MAX_FILES, "more file")}${c.reset}`);
+    }
+  });
+
+  console.log("");
+  console.log(`${c.dim}${"─".repeat(Math.min(width, 64))}${c.reset}`);
+  if (meta.filtered) {
+    console.log(
+      `${c.yellow}Filtered view.${c.reset}${c.dim} Other rules or severities may still have findings.${c.reset}`
+    );
+  }
+}
+
+// ── learn and prompt ────────────────────────────────────────────────────────
+
+function cmdLearn(args = []) {
+  const share = args.includes("--link");
+  for (const a of args) {
+    if (a !== "--link") {
+      process.stderr.write(`unknown flag for learn: ${a}\n`);
+      process.stderr.write("learn takes only --link. run `llm-audit --help` for usage.\n");
+      process.exit(2);
+    }
+  }
+  const saved = loadLastScan();
+  if (!saved) {
+    console.log(
+      `No scan saved for this project yet, so this is the lesson library.\n` +
+        `${c.dim}Run \`${self()} scan\` at a terminal for lessons about your own code.${c.reset}`
+    );
+    openPage(null);
+    return;
+  }
+  if (share) {
+    const { url } = learnLinkFromPayload(saved.payload);
+    if (!url) {
+      process.stderr.write("too many findings to fit in a link.\n");
+      process.exit(1);
+    }
+    console.log(url);
+    return;
+  }
+  const when = new Date(saved.savedAt);
+  const n = (saved.payload.f || []).length;
+  console.log(
+    `Lessons for your last scan ${c.dim}(${plural(n, "finding")}, ` +
+      `${isNaN(when) ? "earlier" : when.toLocaleString()})${c.reset}`
+  );
+  openPage(saved.payload);
+}
+
+// A saved payload already holds the snippets and redactions, so the share
+// link is built from it directly rather than from a fresh envelope.
+function learnLinkFromPayload(payload) {
+  const envelope = {
+    tool: { version: payload.tool },
+    repo: payload.repo,
+    scannedPaths: payload.paths,
+    findings: (payload.f || []).map(([ruleId, severity, path, startLine, endLine, from, lines]) => ({
+      ruleId, severity, path, startLine, endLine, lines: lines.join("\n"), _ctx: { from, lines },
+    })),
+  };
+  return learnLink(envelope, { context: (f) => f._ctx, base: learnBase(), filtered: payload.filtered });
+}
+
+function copyToClipboard(text) {
+  const tries =
+    process.platform === "darwin"
+      ? [["pbcopy", []]]
+      : process.platform === "win32"
+        ? [["clip", []]]
+        : [["wl-copy", []], ["xclip", ["-selection", "clipboard"]], ["xsel", ["--clipboard", "--input"]]];
+  for (const [cmd, a] of tries) {
+    const r = spawnSync(cmd, a, { input: text, stdio: ["pipe", "ignore", "ignore"] });
+    if (r.status === 0) return true;
+  }
+  return false;
+}
+
+function cmdPrompt(args = []) {
+  let check = false;
+  let copy = null; // null: copy at a terminal, print when piped
+  let n = null;
+  for (const a of args) {
+    if (a === "--check") check = true;
+    else if (a === "--copy") copy = true;
+    else if (a === "--no-copy") copy = false;
+    else if (/^\d+$/.test(a)) n = Number(a);
+    else {
+      process.stderr.write(`unknown argument for prompt: ${a}\n`);
+      process.stderr.write("usage: llm-audit prompt <lesson number> [--check] [--no-copy]\n");
+      process.exit(2);
+    }
+  }
+
+  const saved = loadLastScan();
+  if (!saved) {
+    process.stderr.write(`No scan saved for this project yet. Run \`${self()} scan\` at a terminal first.\n`);
+    process.exit(1);
+  }
+  const { groups } = groupFindings(payloadFindings(saved.payload), LESSONS);
+  if (!groups.length) {
+    console.log("Your last scan found nothing to fix.");
+    return;
+  }
+
+  if (n === null) {
+    console.log("");
+    console.log(`${c.bold}Which lesson?${c.reset}`);
+    groups.forEach((g, i) => {
+      console.log(`  ${String(i + 1).padStart(2)}  ${g.lesson.title}${c.dim}  ${plural(g.hits.length, "place")}${c.reset}`);
+    });
+    console.log("");
+    console.log(`${c.dim}Then:${c.reset} ${self()} prompt 1  ${c.dim}(add --check for the prompt that checks the rest of the project)${c.reset}`);
+    return;
+  }
+  if (n < 1 || n > groups.length) {
+    process.stderr.write(`There is no lesson ${n}. Your last scan has ${plural(groups.length, "lesson")}.\n`);
+    process.exit(2);
+  }
+
+  const g = groups[n - 1];
+  const text = check ? g.lesson.askPrompt : fixPrompt(g.lesson, g.hits);
+  const doCopy = copy ?? Boolean(process.stdout.isTTY);
+  if (!process.stdout.isTTY) {
+    // Piped: the prompt and nothing else, so `prompt 1 | claude -p` works.
+    process.stdout.write(text + "\n");
+    if (doCopy) copyToClipboard(text);
+    return;
+  }
+  console.log("");
+  console.log(`${c.dim}${check ? "Check prompt" : "Fix prompt"} · lesson ${n} · ${g.lesson.title}${c.reset}`);
+  console.log(`${c.dim}${"─".repeat(Math.min(termWidth(), 64))}${c.reset}`);
+  console.log(text);
+  console.log(`${c.dim}${"─".repeat(Math.min(termWidth(), 64))}${c.reset}`);
+  if (doCopy && copyToClipboard(text)) {
+    console.log(`${c.green}✓ Copied.${c.reset} Paste it into Claude Code, Cursor, or whatever wrote the code.`);
+  } else {
+    console.log("Paste it into Claude Code, Cursor, or whatever wrote the code.");
+  }
 }
 
 function cmdScan(args) {
@@ -925,7 +1243,7 @@ function cmdScan(args) {
   let density = "auto"; // "auto" | "compact" | "verbose"
   let minSeverity = null; // null | "ERROR" | "WARNING" | "INFO"
   let htmlPath = null;
-  let groupBy = "file"; // "file" | "rule"
+  let groupBy = null; // null (pick for the audience) | "lesson" | "file" | "rule"
   let linkMode = "auto"; // "auto" | "always" | "never"
   let openPage = false;
   let learnUrl = null;
@@ -963,8 +1281,8 @@ function cmdScan(args) {
     } else if (arg === "--by" || arg.startsWith("--by=")) {
       const inline = arg.includes("=") ? arg.split("=").slice(1).join("=") : null;
       const value = needsValue("--by", inline, args[++i]);
-      if (!["file", "rule"].includes(value)) {
-        process.stderr.write("--by expects one of: file, rule\n");
+      if (!["lesson", "file", "rule"].includes(value)) {
+        process.stderr.write("--by expects one of: lesson, file, rule\n");
         process.exit(2);
       }
       groupBy = value;
@@ -1010,7 +1328,7 @@ function cmdScan(args) {
       process.stderr.write(`unknown flag: ${arg}\n`);
       process.stderr.write(
         "supported: --json, --sarif, --html <file>, --open, --link, --no-link,\n" +
-          "           --rule <id>, --severity <level>, --by <file|rule>, --compact,\n" +
+          "           --rule <id>, --severity <level>, --by <lesson|file|rule>, --compact,\n" +
           "           --verbose, --fail-on <level>, --learn-url <url>. " +
           "run `llm-audit --help` for usage.\n"
       );
@@ -1094,23 +1412,31 @@ function cmdScan(args) {
       buildEnvelope(runSemgrepJson(targetPaths), targetPaths)
     );
     const elapsedMs = Date.now() - startedAt;
-    const compact =
-      density === "compact" ||
-      (density === "auto" && envelope.findings.length > COMPACT_THRESHOLD);
-    renderHuman(envelope, {
-      failOn,
-      compact,
-      by: groupBy,
-      elapsedMs,
-      filtered: Boolean(ruleFilter.size || minSeverity),
-      filterLabel: ruleFilter.size
-        ? `rule${ruleFilter.size === 1 ? "" : "s"} (${[...ruleFilter].join(", ")})`
-        : minSeverity
-          ? `severity (${minSeverity.toLowerCase()} or worse)`
-          : null,
-    });
     const filtered = Boolean(ruleFilter.size || minSeverity);
-    if (envelope.findings.length && wantsLink(linkMode)) {
+    const filterLabel = ruleFilter.size
+      ? `rule${ruleFilter.size === 1 ? "" : "s"} (${[...ruleFilter].join(", ")})`
+      : minSeverity
+        ? `severity (${minSeverity.toLowerCase()} or worse)`
+        : null;
+    // A person at a terminal gets the lesson view. Hooks, pipes, and CI keep
+    // the per-file view they have always parsed, unless a flag says otherwise.
+    const view =
+      groupBy || (density !== "auto" ? "file" : interactive() ? "lesson" : "file");
+    if (view === "lesson") {
+      renderLessons(envelope, { elapsedMs, filtered, filterLabel });
+    } else {
+      const compact =
+        density === "compact" ||
+        (density === "auto" && envelope.findings.length > COMPACT_THRESHOLD);
+      renderHuman(envelope, { failOn, compact, by: view, elapsedMs, filtered, filterLabel });
+    }
+    // Save the scan for `learn` and `prompt`, and say so, whenever a person
+    // is reading. Never from CI, and never with --no-link.
+    if (linkMode !== "never" && (interactive() || view === "lesson")) {
+      saveLastScan(buildPayload(envelope, { ...shareOptions(undefined, filtered), detail: "context" }));
+      printLearnFooter(envelope, { base: learnUrl, filtered });
+    }
+    if (linkMode === "always" && envelope.findings.length) {
       printLearnLink(envelope, { base: learnUrl, filtered });
     }
     if (openPage) openLearnPage(envelope, { filtered });
@@ -1239,8 +1565,18 @@ function cmdDemo(args = []) {
     runSemgrepJson(vulnerableFiles),
     [FIXTURES_DIR]
   );
-  renderHuman(envelope, { ruleCount: ruleIds.length, stripPrefix: PKG_ROOT });
-  if (wantsLink("auto")) printLearnLink(envelope, { stripPrefix: PKG_ROOT });
+  if (interactive()) {
+    renderLessons(envelope, {
+      ruleCount: ruleIds.length,
+      stripPrefix: PKG_ROOT,
+      label: `demo \u00b7 ${vulnerableFiles.length} deliberately vulnerable fixtures`,
+    });
+    if (!openPage) {
+      printLearnFooter(envelope, { stripPrefix: PKG_ROOT, learnCmd: `${self()} demo --open` });
+    }
+  } else {
+    renderHuman(envelope, { ruleCount: ruleIds.length, stripPrefix: PKG_ROOT });
+  }
   if (openPage) openLearnPage(envelope, { stripPrefix: PKG_ROOT });
 
   console.log("");
@@ -1257,7 +1593,28 @@ function cmdRules(args = []) {
   const target = args.find((a) => !a.startsWith("-"));
   const meta = readRuleMeta(RULES_DIR);
 
-  // No argument: the index, tab-separated so it stays greppable and pipeable.
+  // No argument at a terminal: the rules under the lesson that teaches them,
+  // which is how the scan and the learn page group them too.
+  if (!target && process.stdout.isTTY) {
+    const width = termWidth();
+    console.log("");
+    console.log(`${c.bold}${Object.keys(meta).length} rules${c.reset}${c.dim}  \u00b7  grouped by the mistake they catch${c.reset}`);
+    for (const lesson of LESSONS) {
+      console.log("");
+      console.log(`${c.bold}${lesson.title}${c.reset}${c.dim}  ${lesson.owasp || ""}${c.reset}`);
+      for (const id of lesson.rules) {
+        const r = meta[id] || {};
+        const sev = (r.severity || "INFO").toLowerCase();
+        console.log(`  ${id.padEnd(Math.min(56, width - 12))}${(SEV_COLOR[r.severity] || SEV_COLOR.INFO)()}${sev}${c.reset}`);
+      }
+    }
+    console.log("");
+    console.log(`${c.dim}One rule in full:${c.reset}  ${self()} rules <rule-id>`);
+    console.log(`${c.dim}All lessons in your browser:${c.reset}  ${self()} learn`);
+    return;
+  }
+
+  // No argument, piped: the index, tab-separated so it stays greppable.
   if (!target) {
     for (const id of Object.keys(meta).sort()) {
       const r = meta[id];
@@ -1875,47 +2232,46 @@ OWASP LLM Top 10 at commit time.
     : "";
   return `${title}
 
-EXAMPLES
-  llm-audit demo                  See the rules fire on bundled fixtures
-  llm-audit doctor                Check semgrep, husky, and project state
-  llm-audit scan src              Scan a directory (human-readable)
-  llm-audit scan --json src       Scan and emit findings as JSON for agents/CI
-  llm-audit scan --sarif src      Scan and emit SARIF 2.1.0 for GitHub Code Scanning
-  llm-audit scan --open           Open the lessons for this scan in your browser
-  llm-audit scan --html r.html    Write a shareable HTML report of the run
-  llm-audit rules <rule-id>       Learn one rule: what, why, and the fixed code
-  llm-audit scan --rule <id>      Scan for a single rule
-  llm-audit scan --fail-on error  Report everything, fail CI only on errors
-  llm-audit init --skill          Install pre-commit hook + CI + Claude Code skill
-  llm-audit init --skill-only     Install just the Claude Code skill
-  llm-audit init --dry-run        Preview files \`init\` would write
+START HERE
+  llm-audit demo                  See all twelve rules fire on bundled fixtures
+  llm-audit scan                  Scan this project; mistakes grouped worst first
+  llm-audit learn                 Open the lessons for your last scan
+  llm-audit prompt 1              Copy the fix prompt for lesson 1 to paste
+                                  into Claude Code, Cursor, or similar
+  llm-audit init --skill          Pre-commit hook, CI workflow, and agent skill
 
 USAGE
   llm-audit <command> [options]
 
 COMMANDS
   demo [--open]                   Run the rule pack against bundled fixtures
-  doctor                          Diagnose dependencies and project setup
   scan [paths...] [flags]         Run the rule pack against given paths (default: .)
+  learn [--link]                  Open lessons for this project's last scan
+                                  (or the lesson library if there is none);
+                                  --link prints a shareable URL instead
+  prompt [n] [--check]            Print and copy lesson n's fix prompt;
+                                  --check gives the check-the-rest prompt
+  rules [rule-id]                 List every rule, or explain one in full
+  doctor                          Diagnose dependencies and project setup
   init [flags]                    Install pre-commit hook + CI workflow + optional skill
   uninstall [--dry-run] [-y]      Remove what init installed
-  rules [rule-id]                 List every rule, or explain one in full
 
 SCAN FLAGS
-  --open                          Open the lessons for this scan from a local file
-  --link / --no-link              Always / never print the learn link
-                                  (default: printed at a terminal, not in CI)
-  --learn-url <url>               Where the learn link points, if you host the page
-  --html <file>                   Write a standalone HTML report you can share
-  --json                          Emit findings as JSON (versioned envelope)
-  --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
-  --rule <id>                     Only this rule (repeatable, or comma-separated)
-  --severity <level>              Only this severity or worse (error|warning|info)
-  --by <file|rule>                Group findings by file (default) or by rule
+  --by <lesson|file|rule>         Group by kind of mistake (default at a terminal),
+                                  by file with code (default in hooks and CI), or by rule
   --compact                       One line per finding
   --verbose                       Full rationale for every finding
+  --rule <id>                     Only this rule (repeatable, or comma-separated)
+  --severity <level>              Only this severity or worse (error|warning|info)
   --fail-on <level>               Exit 1 only at or above this severity
                                   any (default) | error | warning | info | never
+  --open                          Open the lessons for this scan right away
+  --link                          Also print a shareable URL (results ride in the #)
+  --no-link                       Don't save the scan for learn/prompt, no hints
+  --learn-url <url>               Where share links point, if you host the page
+  --json                          Emit findings as JSON (versioned envelope)
+  --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
+  --html <file>                   Write a standalone HTML report you can share
 
 INIT FLAGS
   --force                         Overwrite existing files
@@ -1958,6 +2314,12 @@ switch (sub) {
     break;
   case "demo":
     cmdDemo(rest);
+    break;
+  case "learn":
+    cmdLearn(rest);
+    break;
+  case "prompt":
+    cmdPrompt(rest);
     break;
   case "doctor":
     await cmdDoctor();

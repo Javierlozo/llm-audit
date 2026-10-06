@@ -60,7 +60,9 @@ function captureScan() {
 
     const r = spawnSync(
       process.execPath,
-      [join(PKG_ROOT, "src", "cli.mjs"), "scan", "src"],
+      // The view a person gets at a terminal, asked for by name because this
+      // runs without one.
+      [join(PKG_ROOT, "src", "cli.mjs"), "scan", "--by", "lesson", "src"],
       {
         cwd: dir,
         encoding: "utf8",
@@ -73,6 +75,11 @@ function captureScan() {
           LLM_AUDIT_DETERMINISTIC: "1",
           COLUMNS: String(COLUMNS),
           NO_COLOR: "",
+          // Plain hints, not OSC 8 links, and the npx spelling README readers use.
+          FORCE_HYPERLINK: "0",
+          npm_command: "exec",
+          // The saved scan goes to the temp dir, not the real cache.
+          LLM_AUDIT_CACHE_DIR: join(dir, ".cache"),
         },
       }
     );

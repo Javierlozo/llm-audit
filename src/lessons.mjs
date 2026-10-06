@@ -629,3 +629,38 @@ export function fixPrompt(lesson, locations = []) {
     `Please:\n${steps}\n\n${lesson.fix.after}`
   );
 }
+
+/**
+ * Group findings into lessons, worst first. The terminal numbers lessons in
+ * this order and the learn page inlines this function's source, so "lesson 2"
+ * means the same thing in both. Self-contained for the same reason as
+ * fixPrompt: it may only use its arguments.
+ *
+ * Returns { groups: [{ lesson, hits, severity }], unknown: [finding] }.
+ */
+export function groupFindings(findings, lessons) {
+  const rank = (s) => ({ ERROR: 0, WARNING: 1, INFO: 2 })[s] ?? 2;
+  const byLesson = new Map();
+  const unknown = [];
+  for (const f of findings) {
+    const lesson = lessons.find((l) => l.rules.includes(f.ruleId));
+    if (!lesson) {
+      unknown.push(f);
+      continue;
+    }
+    const g = byLesson.get(lesson.slug) || { lesson, hits: [], severity: f.severity };
+    g.hits.push(f);
+    if (rank(f.severity) < rank(g.severity)) g.severity = f.severity;
+    byLesson.set(lesson.slug, g);
+  }
+  const groups = [...byLesson.values()].sort(
+    (a, b) =>
+      rank(a.severity) - rank(b.severity) ||
+      b.hits.length - a.hits.length ||
+      a.lesson.title.localeCompare(b.lesson.title)
+  );
+  for (const g of groups) {
+    g.hits.sort((a, b) => a.path.localeCompare(b.path) || a.startLine - b.startLine);
+  }
+  return { groups, unknown };
+}

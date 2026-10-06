@@ -17,7 +17,7 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 ```
 
 <p>
-  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler is flagged for a hardcoded provider key and for parsing model output without a schema, ending in a severity summary" width="820"/>
+  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler has three mistakes, a hardcoded key, model JSON trusted without checking, and an unchecked request body, each listed with its file and line, ending with the commands to read the lessons and copy a fix prompt" width="820"/>
   <br/>
   <sub>A real run against a real chat route handler. Generated from live CLI output by
   <code>npm run demo:svg</code>, not drawn by hand. Every finding carries its OWASP mapping,
@@ -119,40 +119,66 @@ npx llm-audit scan
 That's enough to decide if it's worth keeping. To make it stick, see **Adopt in
 your project** below.
 
-## Learn what's failing
+## Scan, learn, fix
 
-At a terminal, a scan with findings ends with a link:
+At a terminal, `scan` groups what it found by kind of mistake, worst first,
+with every place each one occurs:
 
 ```
-Learn what's failing: Open the lessons ↗
+llm-audit  ·  scan of . · main @ 4319614d
+
+2 mistakes in 8 places
+8 warnings across 6 files
+
+ 1  The model's JSON is trusted without checking            warning  5 places
+    src/app/api/detectProjects/route.ts      179
+    src/app/api/fitAssessment/route.ts       102
+    ...
+
+ 2  The request body goes to the model unchecked            warning  3 places
+    src/app/api/analyzePortfolio/route.ts    39, 84
+    src/app/api/interviewQuestions/route.ts  53
+
+Read the lessons, with your code and a fix prompt for each:
+  npx llm-audit learn
+Copy a fix prompt for your AI tool:  npx llm-audit prompt 1
 ```
 
-It opens a page with one lesson per kind of mistake. Each lesson shows every
-place it occurs in your code, explains what is wrong, walks through how someone
-would use it against you, and gives you two prompts to paste into Claude Code,
-Cursor, or whatever wrote the code: one that fixes every listed place, and one
-that checks the rest of the project for the same mistake. You can mark lessons
-fixed as you go.
-
-Nothing is uploaded. The findings travel in the part of the URL after `#`,
-which browsers never send to a server, so the page is a static file with no
-backend. The page itself has a CSP that blocks every network request. The link
-does carry code snippets, so secret-shaped strings are redacted before they go
-in, and the link is only printed at an interactive terminal, never into CI
-logs, unless you ask for it.
+Then two commands work from that scan:
 
 ```bash
-npx llm-audit scan --open      # same page, from a private local file
-npx llm-audit scan --link      # print the link even when piped or in CI
-npx llm-audit scan --no-link   # never print it
-npx llm-audit demo --open      # every lesson, on the bundled fixtures
+npx llm-audit learn            # the lessons for your last scan, in your browser
+npx llm-audit prompt 1         # copy lesson 1's fix prompt to the clipboard
+npx llm-audit prompt 1 --check # the prompt that checks the rest of the project
+npx llm-audit prompt 1 | claude -p   # piped, it prints the prompt and nothing else
 ```
 
-Without a link, the page is the lesson library: all eleven lessons, which cover
-all twelve rules. It is built from this repo by `node tools/build-site.mjs` and
-deployed by `.github/workflows/pages.yml`. To host it yourself, serve that file
-anywhere and point the CLI at it with `--learn-url <url>` or
-`LLM_AUDIT_LEARN_URL`.
+`learn` opens a page with one lesson per mistake, numbered the same as the
+terminal. Each lesson shows every place it occurs in your code, explains what
+is wrong, walks through how someone would use it against you, and gives you the
+fix prompt and the check prompt. You can mark lessons fixed as you go. With no
+scan saved for the project, `learn` opens the lesson library: eleven lessons
+covering all twelve rules.
+
+Nothing is uploaded. The last scan is saved per project in your user cache
+directory, readable only by you, with secret-shaped strings redacted. The page
+is one static file whose CSP blocks every network request. Hooks, pipes, and CI
+get the per-file output they always have, and save nothing.
+
+```bash
+npx llm-audit scan --open      # open the lessons right after the scan
+npx llm-audit scan --by file   # per-file view with code, the hook/CI default
+npx llm-audit scan --no-link   # don't save the scan, no hints
+npx llm-audit learn --link     # a shareable URL for the last scan
+npx llm-audit rules            # all twelve rules, grouped by mistake
+```
+
+A share link carries the scan in the part of the URL after `#`, which browsers
+never send to a server, so it opens on the static page at
+`https://javierlozo.github.io/llm-audit/` without anything being stored there.
+The page is built by `node tools/build-site.mjs` and deployed by
+`.github/workflows/pages.yml`; to host it yourself, serve that file and point
+the CLI at it with `--learn-url <url>` or `LLM_AUDIT_LEARN_URL`.
 
 ## Machine-readable output (CI, agents, dashboards)
 
@@ -198,7 +224,8 @@ npx llm-audit rules hardcoded-llm-api-key
 ```bash
 npx llm-audit scan --rule hardcoded-llm-api-key src   # one rule
 npx llm-audit scan --severity error src               # errors only
-npx llm-audit scan --by rule src                      # group by rule, not file
+npx llm-audit scan --by file src                      # per file, with code
+npx llm-audit scan --by rule src                      # group by rule
 npx llm-audit scan --compact src                      # one line per finding
 ```
 

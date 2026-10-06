@@ -10,7 +10,7 @@ import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { LESSONS, fixPrompt, where } from "./lessons.mjs";
+import { LESSONS, fixPrompt, where, groupFindings } from "./lessons.mjs";
 import { readSafeExample } from "./rule-docs.mjs";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -63,7 +63,7 @@ export function renderLearnPage({ scan = null, version = "" } = {}) {
     .replace("@@FONT_ARCHIVO@@", font("archivo"));
   const js = readFileSync(join(HERE, "learn", "app.js"), "utf8").replace(
     "/* @@PROMPT@@ */",
-    `${where.toString()}\n  ${fixPrompt.toString()}`
+    [where, fixPrompt, groupFindings].map((fn) => fn.toString()).join("\n  ")
   );
 
   const csp = [

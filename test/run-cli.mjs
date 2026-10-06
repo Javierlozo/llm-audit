@@ -30,7 +30,7 @@ import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
-import { LESSONS, fixPrompt } from "../src/lessons.mjs";
+import { LESSONS, fixPrompt, groupFindings } from "../src/lessons.mjs";
 import { learnLink, unpack, redact } from "../src/share.mjs";
 import { renderLearnPage } from "../src/learn.mjs";
 
@@ -436,6 +436,7 @@ check("the learn page runs only its own hashed code and loads nothing", () => {
   assert(!/\b(src|href)="(https?:)?\/\//.test(html), "the page must not reference anything remote");
   assert(!/\sstyle="/.test(html), "inline style attributes are blocked by the CSP");
   assert(scripts[0].includes(fixPrompt.toString()), "the page must use the CLI's fixPrompt, not a copy");
+  assert(scripts[0].includes(groupFindings.toString()), "the page must number lessons with the CLI's grouping");
   assert(!scripts[0].includes("@@PROMPT@@"), "fixPrompt placeholder was not replaced");
 });
 
@@ -898,6 +899,85 @@ if (!hasSemgrep()) {
     const r = run(["scan", "--json", "--link", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
     JSON.parse(r.stdout);
     assert(/#r=/.test(r.stderr), "expected the link on stderr");
+  });
+
+  // learn and prompt work from the last scan of a project, saved to a cache
+  // directory. Each test gets its own, so nothing touches the real one.
+  const withCache = (fn) =>
+    withTempDir((cache) =>
+      fn({ ...process.env, LLM_AUDIT_CACHE_DIR: cache, LLM_AUDIT_NO_BROWSER: "1", CI: "" }, cache)
+    );
+  const keyFixture = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+  const savedScans = (cache) =>
+    existsSync(join(cache, "scans")) ? readdirSync(join(cache, "scans")) : [];
+
+  check("hooks and CI keep the per-file view and save nothing", () => {
+    withCache((env, cache) => {
+      const r = run(["scan", keyFixture], { env });
+      assert(/Start here: hardcoded-llm-api-key/.test(r.stdout), "expected the per-file view");
+      assert(!/mistakes? in \d+ place/.test(r.stdout), "the lesson view leaked into piped output");
+      assertEqual(savedScans(cache).length, 0, "saved scans after a piped run");
+    });
+  });
+
+  check("the lesson view groups by mistake and saves the scan privately", () => {
+    withCache((env, cache) => {
+      const r = run(["scan", "--by", "lesson", keyFixture], { env });
+      assertEqual(r.status, 1, "exit code still reflects the findings");
+      assert(/1 mistake in \d+ places/.test(r.stdout), `expected a headline, got: ${r.stdout.slice(0, 300)}`);
+      assert(r.stdout.includes(" 1  A secret key is written into the code"), "expected lesson 1 by title");
+      assert(/llm-audit learn/.test(r.stdout) && /llm-audit prompt 1/.test(r.stdout), "expected the next steps");
+      const files = savedScans(cache);
+      assertEqual(files.length, 1, "saved scans");
+      const file = join(cache, "scans", files[0]);
+      if (process.platform !== "win32") {
+        const mode = spawnSync("stat", process.platform === "darwin" ? ["-f", "%Lp", file] : ["-c", "%a", file], { encoding: "utf8" }).stdout.trim();
+        assertEqual(mode, "600", "saved scan file mode");
+      }
+      assert(!/sk-(proj-|ant-)?[A-Za-z0-9]{20,}/.test(readFileSync(file, "utf8")), "a key reached the saved scan");
+    });
+  });
+
+  check("--no-link saves nothing and prints no hints", () => {
+    withCache((env, cache) => {
+      const r = run(["scan", "--by", "lesson", "--no-link", keyFixture], { env });
+      assert(!/llm-audit learn/.test(r.stdout), "printed a learn hint");
+      assertEqual(savedScans(cache).length, 0, "saved scans");
+    });
+  });
+
+  check("prompt prints the fix prompt for a lesson of the last scan", () => {
+    withCache((env) => {
+      const none = run(["prompt", "1"], { env });
+      assertEqual(none.status, 1, "prompt with no saved scan");
+      run(["scan", "--by", "lesson", keyFixture], { env });
+      const r = run(["prompt", "1"], { env });
+      assertEqual(r.status, 0, "exit code");
+      assert(r.stdout.startsWith("Fix this in my project:"), "piped output must be the prompt alone");
+      assert(r.stdout.includes("vulnerable.ts line"), "expected the fixture's locations");
+      const check = run(["prompt", "1", "--check"], { env });
+      assert(check.stdout.startsWith("Check this project"), "expected the check prompt");
+      assertEqual(run(["prompt", "9"], { env }).status, 2, "out-of-range lesson");
+    });
+  });
+
+  check("learn opens the last scan, or the library when there is none", () => {
+    withCache((env) => {
+      const lib = run(["learn"], { env });
+      assert(/lesson library/.test(lib.stdout), "expected the library notice");
+      const libFile = (lib.stderr.match(/Learn page written to (\S+)/) || [])[1];
+      assert(libFile && !readFileSync(libFile, "utf8").includes('id="scan"'), "the library must not embed a scan");
+      rmSync(dirname(libFile), { recursive: true, force: true });
+
+      run(["scan", "--by", "lesson", keyFixture], { env });
+      const r = run(["learn"], { env });
+      const file = (r.stderr.match(/Learn page written to (\S+)/) || [])[1];
+      assert(file && readFileSync(file, "utf8").includes('id="scan"'), "the page must embed the saved scan");
+      rmSync(dirname(file), { recursive: true, force: true });
+
+      const share = run(["learn", "--link"], { env });
+      assert(/^https:\/\/\S+#r=/.test(share.stdout.trim()), "learn --link prints a share URL");
+    });
   });
 
   check("--sarif emits valid SARIF 2.1.0", () => {

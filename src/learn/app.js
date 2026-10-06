@@ -37,7 +37,6 @@
 
   // ── payload ──────────────────────────────────────────────────────────────
   const SEVERITIES = ["ERROR", "WARNING", "INFO"];
-  const SEV_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
   const RULE_ID = /^[a-z0-9-]{1,100}$/;
   const isInt = (n) => Number.isInteger(n) && n >= 0 && n < 1e7;
 
@@ -128,32 +127,8 @@
     };
   }
 
-  // ── grouping: one lesson per class of mistake ────────────────────────────
-  function group(findings) {
-    const byLesson = new Map();
-    const unknown = [];
-    for (const f of findings) {
-      const lesson = LESSONS.find((l) => l.rules.includes(f.ruleId));
-      if (!lesson) {
-        unknown.push(f);
-        continue;
-      }
-      const g = byLesson.get(lesson.slug) || { lesson, hits: [], severity: f.severity };
-      g.hits.push(f);
-      if (SEV_RANK[f.severity] < SEV_RANK[g.severity]) g.severity = f.severity;
-      byLesson.set(lesson.slug, g);
-    }
-    const groups = [...byLesson.values()].sort(
-      (a, b) =>
-        SEV_RANK[a.severity] - SEV_RANK[b.severity] ||
-        b.hits.length - a.hits.length ||
-        a.lesson.title.localeCompare(b.lesson.title)
-    );
-    for (const g of groups) {
-      g.hits.sort((a, b) => a.path.localeCompare(b.path) || a.startLine - b.startLine);
-    }
-    return { groups, unknown };
-  }
+  // ── grouping: shared with the terminal (lessons.mjs), so numbering agrees
+  const group = (findings) => groupFindings(findings, LESSONS);
 
   // ── pieces ───────────────────────────────────────────────────────────────
   async function copy(text, button) {

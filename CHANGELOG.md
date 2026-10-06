@@ -11,6 +11,29 @@ independently of the package. It is at `1` and has not changed.
 
 ### Added
 
+- At a terminal, `scan` now groups findings by kind of mistake, worst first,
+  with a headline and every place each one occurs. The numbering matches the
+  learn page. Hooks, pipes, and CI keep the per-file view (`--by file`)
+  unchanged.
+- `llm-audit learn` opens the lessons for the project's last scan, or the
+  lesson library when there is none. `learn --link` prints a share URL. The
+  last scan is saved per project in the user cache directory, owner-only.
+- `llm-audit prompt <n>` prints lesson n's fix prompt and copies it to the
+  clipboard; `--check` gives the check-the-rest prompt. Piped, it prints the
+  prompt alone.
+- `llm-audit rules` at a terminal lists the rules grouped by the mistake they
+  catch. Piped, it stays tab-separated.
+
+### Changed
+
+- A scan no longer prints the full share URL by default; it points at
+  `learn` instead. Terminals with clickable links still get "Open the
+  lessons". `--link` prints the URL.
+
+## [0.8.0] — 2026-10-06
+
+### Added
+
 - The learn page. A scan with findings ends with a link to one lesson per kind
   of mistake: every place it occurs in your code, how it gets exploited, a
   prompt that fixes every listed place, and a prompt that checks the rest of
@@ -25,6 +48,10 @@ independently of the package. It is at `1` and has not changed.
   `src/learn/fonts/`), so it still loads nothing from the network.
 - Lessons for all twelve rules (`src/lessons.mjs`), five of them adapted from
   Vibe Code Security Tutor.
+
+## [0.5.0 to 0.7.0] — 2026-08-22 to 2026-09-29
+
+These releases were not recorded separately; their changes are listed together.
 
 ### Changed
 
