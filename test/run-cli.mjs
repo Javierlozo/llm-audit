@@ -38,6 +38,12 @@ const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(PKG_ROOT, "src", "cli.mjs");
 const FIXTURES = join(PKG_ROOT, "test", "fixtures");
 
+// The suite runs in GitHub Actions too. Scans of deliberately vulnerable
+// fixtures must not turn into annotations on this repo's own pull requests,
+// so the children never see the runner's variables unless a test sets them.
+delete process.env.GITHUB_ACTIONS;
+delete process.env.GITHUB_STEP_SUMMARY;
+
 let passed = 0;
 let failed = 0;
 
@@ -453,6 +459,18 @@ check("--learn-url must be a plain http(s) URL", () => {
     const r = run(["scan", "--learn-url", bad], { env: { PATH: "" } });
     assertEqual(r.status, 2, `exit code for ${bad}`);
   }
+});
+
+check("a config file with an unknown key is refused, even without semgrep", () => {
+  withTempDir((dir) => {
+    writeFileSync(join(dir, ".llm-audit.json"), JSON.stringify({ failon: "error" }));
+    const r = run(["scan"], { cwd: dir, env: { PATH: "" } });
+    assertEqual(r.status, 2, "exit code");
+    assert(/unknown key "failon"/.test(r.stderr), `expected the key error, got: ${r.stderr.trim()}`);
+    writeFileSync(join(dir, ".llm-audit.json"), JSON.stringify({ disable: ["no-such-rule"] }));
+    const bad = run(["scan"], { cwd: dir, env: { PATH: "" } });
+    assertEqual(bad.status, 2, "exit code for an unknown rule");
+  });
 });
 
 check("docs/RULES.md ships with the package", () => {
@@ -977,6 +995,90 @@ if (!hasSemgrep()) {
 
       const share = run(["learn", "--link"], { env });
       assert(/^https:\/\/\S+#r=/.test(share.stdout.trim()), "learn --link prints a share URL");
+    });
+  });
+
+  // A small git repo with real findings, for the policy features.
+  const KEY_SRC = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+  const JSON_SRC = join(FIXTURES, "model-output-parsed-without-schema", "vulnerable.ts");
+  const withRepo = (fn) =>
+    withTempDir((dir) => {
+      const git = (...a) => spawnSync("git", a, { cwd: dir, encoding: "utf8" });
+      git("init", "-q");
+      git("config", "user.email", "t@example.test");
+      git("config", "user.name", "t");
+      mkdirSync(join(dir, "src"));
+      return fn(dir, git);
+    });
+  const json = (r) => JSON.parse(r.stdout);
+
+  check("no output shows a hardcoded key in full", () => {
+    const human = run(["scan", "--by", "file", "--verbose", KEY_SRC]);
+    const data = run(["scan", "--json", KEY_SRC]);
+    for (const [name, out] of [["human", human.stdout], ["json", data.stdout]]) {
+      assert(!/sk-(proj-|ant-)?[A-Za-z0-9]{20,}/.test(out), `${name} output printed a key`);
+      assert(out.includes("[redacted]"), `${name} output should show the redaction`);
+    }
+  });
+
+  check("an ignore comment with a reason suppresses, one without is refused", () => {
+    withRepo((dir) => {
+      const lines = readFileSync(KEY_SRC, "utf8").split("\n");
+      const at = lines.map((l, i) => (/apiKey/.test(l) ? i : -1)).filter((i) => i >= 0);
+      lines.splice(at[1], 0, "// llm-audit-ignore hardcoded-llm-api-key");
+      lines.splice(at[0], 0, "// llm-audit-ignore hardcoded-llm-api-key -- fake key in a test");
+      writeFileSync(join(dir, "src", "a.ts"), lines.join("\n"));
+      const r = run(["scan", "--json", "src"], { cwd: dir });
+      const e = json(r);
+      assertEqual(e.suppressed.length, 1, "suppressed findings");
+      assertEqual(e.suppressed[0].reason, "fake key in a test", "reason");
+      assertEqual(e.summary.suppressed, 1, "summary.suppressed");
+      assert(e.findings.every((f) => f.docsUrl.includes("#" + f.ruleId)), "every finding links its rule docs");
+      assert(/has no reason, so it was not applied/.test(r.stderr), "expected the missing-reason warning");
+    });
+  });
+
+  check("config turns rules off and sets the exit policy", () => {
+    withRepo((dir) => {
+      writeFileSync(join(dir, "src", "a.ts"), readFileSync(JSON_SRC, "utf8"));
+      writeFileSync(join(dir, ".llm-audit.json"), JSON.stringify({ failOn: "error" }));
+      assertEqual(run(["scan", "src"], { cwd: dir }).status, 0, "warnings only, failOn error");
+      writeFileSync(join(dir, ".llm-audit.json"), JSON.stringify({ disable: ["model-output-parsed-without-schema"] }));
+      const r = run(["scan", "--json", "src"], { cwd: dir });
+      assertEqual(json(r).findings.length, 0, "findings from a disabled rule");
+      assertEqual(run(["scan", "--fail-on", "any", "src"], { cwd: dir }).status, 0, "nothing left to fail on");
+    });
+  });
+
+  check("a baseline reports only new findings, with uncommitted changes", () => {
+    withRepo((dir, git) => {
+      writeFileSync(join(dir, "src", "old.ts"), readFileSync(JSON_SRC, "utf8"));
+      git("add", "-A");
+      git("commit", "-qm", "base");
+      // Old code moves down a line; new code arrives. Neither is committed.
+      writeFileSync(join(dir, "src", "old.ts"), "// moved\n" + readFileSync(JSON_SRC, "utf8"));
+      writeFileSync(join(dir, "src", "new.ts"), readFileSync(KEY_SRC, "utf8"));
+      const e = json(run(["scan", "--json", "--baseline", "HEAD", "src"], { cwd: dir }));
+      assert(e.findings.length > 0, "new findings must remain");
+      assert(e.findings.every((f) => f.path.endsWith("new.ts")), "only new.ts should remain");
+      assert(e.baseline && e.baseline.ref === "HEAD" && e.baseline.hidden > 0, "baseline info in the envelope");
+      assertEqual(git("worktree", "list").stdout.trim().split("\n").length, 1, "temporary worktree left behind");
+      assertEqual(run(["scan", "--baseline", "no-such-ref", "src"], { cwd: dir }).status, 2, "unknown ref");
+    });
+  });
+
+  check("inside GitHub Actions, findings become annotations and a summary", () => {
+    withTempDir((dir) => {
+      const summary = join(dir, "summary.md");
+      const env = { ...process.env, GITHUB_ACTIONS: "true", GITHUB_STEP_SUMMARY: summary };
+      const r = run(["scan", JSON_SRC], { env });
+      assert(/^::warning file=.*,line=\d+,title=llm-audit%3A /m.test(r.stdout), "expected warning annotations");
+      assert(readFileSync(summary, "utf8").includes("## llm-audit"), "expected a step summary");
+      const j = run(["scan", "--json", JSON_SRC], { env });
+      JSON.parse(j.stdout);
+      assert(/^::warning /m.test(j.stderr), "with --json, annotations go to stderr");
+      const off = run(["scan", "--no-github", JSON_SRC], { env: { ...env, GITHUB_STEP_SUMMARY: "" } });
+      assert(!/^::/m.test(off.stdout), "--no-github prints no annotations");
     });
   });
 

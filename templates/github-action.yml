@@ -30,5 +30,9 @@ jobs:
       # Pin the version you have reviewed rather than taking whatever is latest
       # on the morning the job runs:
       #   run: npx --yes llm-audit@1.2.3 scan
+      # Findings show up as annotations on the pull request's changed lines and
+      # as a summary on this job's page. To adopt on a repo that already has
+      # findings, fail only on new ones: add `--baseline origin/main` (and
+      # `fetch-depth: 0` on the checkout step so that ref exists).
       - name: run llm-audit
         run: npx --yes llm-audit scan

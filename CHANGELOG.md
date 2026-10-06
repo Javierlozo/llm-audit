@@ -23,6 +23,25 @@ independently of the package. It is at `1` and has not changed.
   prompt alone.
 - `llm-audit rules` at a terminal lists the rules grouped by the mistake they
   catch. Piped, it stays tab-separated.
+- Ignore comments that require a reason:
+  `// llm-audit-ignore <rule-id> -- <reason>`. Without a reason, or with an
+  unknown rule, the comment is not applied and the scan says why. Suppressed
+  findings are counted in the output and listed in `--json` (`suppressed`,
+  `summary.suppressed`; additive to schemaVersion 1).
+- `--baseline <git-ref>` reports only findings new since that commit. It
+  works with uncommitted changes and ignores code that only moved.
+- Project config: `.llm-audit.json` or an `"llm-audit"` key in package.json,
+  with `failOn`, `severity`, `disable`, `ignore`, and `baseline`. Strict:
+  unknown keys and rule ids are errors.
+- In GitHub Actions, findings become pull request annotations and a job
+  summary. `--no-github` turns it off.
+- Each `--json` finding carries a `docsUrl`.
+
+### Security
+
+- Secret-shaped strings are now redacted in every output that shows code:
+  the terminal, `--json`, `--html`, and the learn page. A hardcoded key used
+  to be reprinted in full in the finding's snippet.
 
 ### Changed
 

@@ -180,6 +180,67 @@ The page is built by `node tools/build-site.mjs` and deployed by
 `.github/workflows/pages.yml`; to host it yourself, serve that file and point
 the CLI at it with `--learn-url <url>` or `LLM_AUDIT_LEARN_URL`.
 
+## Project policy
+
+### Ignoring a finding, with a reason
+
+```ts
+// llm-audit-ignore hardcoded-llm-api-key -- fake key, only used in this test
+const client = new OpenAI({ apiKey: "sk-test-..." });
+```
+
+Put the comment on the flagged line or the line above it. Name the rule (or
+several, comma-separated) and say why after `--`. A comment without a reason, or
+naming a rule that doesn't exist, is not applied: the finding stays and the
+scan tells you what is wrong with the comment. Suppressed findings are counted
+under the results and listed with their reasons in `--json`, so a dismissal is
+always reviewable. Semgrep's own `// nosemgrep` also works, without a reason.
+
+### Adopting on a repo that already has findings
+
+```bash
+npx llm-audit scan --baseline origin/main
+```
+
+Only findings that are new since that commit are reported, so you can turn the
+gate on today and burn the backlog down separately. It works with uncommitted
+changes, and code that merely moved still counts as old. In GitHub Actions, give
+the checkout step `fetch-depth: 0` so the ref exists.
+
+### A config file
+
+`.llm-audit.json` at the project root (or an `"llm-audit"` key in
+`package.json`) keeps the policy in one place for the hook, CI, and your
+terminal. Flags on the command line still win.
+
+```json
+{
+  "failOn": "error",
+  "disable": ["streaming-response-without-abort-handling"],
+  "ignore": ["scripts/**", "**/*.test.ts"],
+  "baseline": "origin/main"
+}
+```
+
+The file is strict: an unknown key or rule id is an error, because a typo in a
+security tool's config should never read as configured.
+
+### In GitHub Actions
+
+Inside a GitHub Actions job, `scan` also writes each finding as an annotation,
+which GitHub shows on the pull request's changed lines, and adds a summary to
+the job page. No token or code-scanning setup is needed. `--no-github` turns it
+off. `llm-audit init` installs a workflow that runs the scan.
+
+### Exit codes
+
+| Code | Meaning |
+|---|---|
+| 0 | Nothing at or above `--fail-on` |
+| 1 | Findings at or above `--fail-on` |
+| 2 | Usage or config error |
+| 127 | Semgrep is not installed |
+
 ## Machine-readable output (CI, agents, dashboards)
 
 `scan` has two machine-readable formats, plus the HTML report covered below:

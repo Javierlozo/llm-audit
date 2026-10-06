@@ -34,7 +34,10 @@ import { createInterface } from "node:readline";
 import { tmpdir, homedir } from "node:os";
 import { parseRuleDocs, readRuleMeta, readSafeExample } from "./rule-docs.mjs";
 import { renderHtmlReport } from "./report.mjs";
-import { buildPayload, learnLink, DEFAULT_LEARN_URL } from "./share.mjs";
+import { buildPayload, learnLink, redact, DEFAULT_LEARN_URL } from "./share.mjs";
+import { loadConfig, ConfigError, CONFIG_FILE } from "./config.mjs";
+import { applySuppressions } from "./suppress.mjs";
+import { inGitHubActions, writeAnnotations, writeStepSummary } from "./github.mjs";
 import { renderLearnPage } from "./learn.mjs";
 import { LESSONS, groupFindings, fixPrompt } from "./lessons.mjs";
 
@@ -201,13 +204,13 @@ function withProgress(label, fn) {
   }
 }
 
-function runSemgrepJson(targetPaths) {
+function runSemgrepJson(targetPaths, { cwd, exclude = [], label } = {}) {
   // `--` locks interpretation: any path starting with `-` is a path, not a
   // semgrep flag. Defends against a wrapper or piped input injecting flags
   // via path arguments.
   const ruleCount = readdirSync(RULES_DIR).filter((f) => f.endsWith(".yaml")).length;
   const r = withProgress(
-    `scanning ${targetPaths.join(" ")} \u00b7 ${ruleCount} rules`,
+    label || `scanning ${targetPaths.join(" ")} \u00b7 ${ruleCount} rules`,
     () => spawnSync(
     "semgrep",
     [
@@ -215,10 +218,11 @@ function runSemgrepJson(targetPaths) {
       "--json",
       "--metrics=off",
       "--quiet",
+      ...exclude.flatMap((g) => ["--exclude", g]),
       "--",
       ...targetPaths,
     ],
-    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 }
+    { encoding: "utf8", maxBuffer: 64 * 1024 * 1024, cwd }
     )
   );
 
@@ -289,7 +293,10 @@ function readContext(path, startLine, endLine, pad = 2) {
       from,
       matchFrom: startLine,
       matchTo: endLine ?? startLine,
-      lines: all.slice(from - 1, to),
+      // A hardcoded key is the finding, not something to reprint. Every
+      // surface that shows code (terminal, HTML, JSON, learn page) goes
+      // through here or readSnippet, so this is the one place to redact.
+      lines: all.slice(from - 1, to).map(redact),
     };
   } catch {
     return null;
@@ -298,14 +305,18 @@ function readContext(path, startLine, endLine, pad = 2) {
 
 function readSnippet(path, startLine, endLine, fallback) {
   const given = (fallback || "").trim();
-  if (given && given !== "requires login") return fallback;
+  if (given && given !== "requires login") return fallback.split("\n").map(redact).join("\n");
   if (!path || !startLine) return "";
   try {
     const all = readFileSync(path, "utf8").split("\n");
-    return all.slice(startLine - 1, (endLine ?? startLine)).join("\n");
+    return all.slice(startLine - 1, (endLine ?? startLine)).map(redact).join("\n");
   } catch {
     return "";
   }
+}
+
+function ruleDocsUrl(ruleId) {
+  return `https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md#${ruleId}`;
 }
 
 function buildEnvelope(semgrepOut, targetPaths) {
@@ -333,6 +344,8 @@ function buildEnvelope(semgrepOut, targetPaths) {
       endLine: f.end?.line,
       message: ((f.extra?.message || "") + "").trim(),
       lines: readSnippet(f.path, f.start?.line, f.end?.line, f.extra?.lines),
+      // Additive since schemaVersion 1.
+      docsUrl: ruleDocsUrl(ruleId),
     });
   }
 
@@ -1229,6 +1242,102 @@ function cmdPrompt(args = []) {
   }
 }
 
+// What policy removed from this scan, said once, under the results.
+function printScanNotes(envelope, notes, config) {
+  const lines = [];
+  for (const p of notes.problems) {
+    lines.push(
+      `${c.yellow}!${c.reset} llm-audit-ignore at ${displayPath(p.path)}:${p.line} ${p.message}`
+    );
+  }
+  const sup = envelope.suppressed?.length || 0;
+  if (sup) {
+    lines.push(`${c.dim}${plural(sup, "finding")} suppressed by llm-audit-ignore comments. --json lists them with their reasons.${c.reset}`);
+  }
+  if (envelope.baseline) {
+    lines.push(
+      `${c.dim}Only findings new since ${envelope.baseline.ref}: ` +
+        `${plural(envelope.baseline.hidden, "existing finding")} left out.${c.reset}`
+    );
+  }
+  if (notes.disabled.length) {
+    lines.push(`${c.dim}${plural(notes.disabled.length, "rule")} turned off in ${config.file}: ${notes.disabled.join(", ")}.${c.reset}`);
+  }
+  if (!lines.length) return;
+  console.log("");
+  for (const l of lines) console.log(l);
+}
+
+// Findings that already existed at `ref` are left out, so a repo can adopt
+// the scan without first fixing its whole history. Semgrep has a baseline
+// flag, but it refuses to run with uncommitted changes, which is the normal
+// state at a terminal. So: check `ref` out into a temporary worktree, scan
+// it with the same rules, and subtract by rule, file, and matched code.
+// Line numbers are ignored, so code that moved is still old code.
+function filterBaseline(findings, ref, targetPaths, exclude) {
+  const fail = (msg) => {
+    process.stderr.write(`error: ${msg}\n`);
+    process.exit(2);
+  };
+  const git = (args, cwd) => spawnSync("git", args, { cwd, encoding: "utf8" });
+  const top = git(["rev-parse", "--show-toplevel"]);
+  if (top.status !== 0) fail("a baseline needs a git repository.");
+  const root = realpathSync(top.stdout.trim());
+  const sha = git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`]);
+  if (sha.status !== 0) {
+    fail(
+      `baseline "${ref}" is not a commit in this repository.\n` +
+        "In CI, fetch the history first (actions/checkout with fetch-depth: 0)."
+    );
+  }
+
+  const dir = mkdtempSync(join(tmpdir(), "llm-audit-baseline-"));
+  const tree = join(dir, "tree");
+  const add = git(["worktree", "add", "--detach", "--quiet", tree, sha.stdout.trim()], root);
+  if (add.status !== 0) {
+    rmSync(dir, { recursive: true, force: true });
+    fail(`could not check out ${ref} for the baseline: ${(add.stderr || "").trim()}`);
+  }
+
+  const norm = (text) => (text || "").replace(/\s+/g, " ").trim();
+  const here = realpathSync(process.cwd());
+  const rel = (p, base) => relative(base, resolve(base, p));
+  try {
+    const cwdInTree = join(tree, relative(root, here));
+    const paths = targetPaths
+      .map((p) => rel(p, here) || ".")
+      .filter((p) => existsSync(join(cwdInTree, p)));
+    const counts = new Map();
+    if (paths.length) {
+      const out = runSemgrepJson(paths, { cwd: cwdInTree, exclude, label: `scanning ${ref} for the baseline` });
+      const seen = new Set();
+      for (const r of out.results) {
+        const ruleId = String(r.check_id || "").split(".").pop();
+        const span = `${ruleId}\0${r.path}\0${r.start?.line}\0${r.end?.line}`;
+        if (seen.has(span)) continue;
+        seen.add(span);
+        const text = readSnippet(join(cwdInTree, r.path), r.start?.line, r.end?.line, r.extra?.lines);
+        const key = `${ruleId}\0${rel(r.path, cwdInTree)}\0${norm(text)}`;
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    let hidden = 0;
+    const kept = findings.filter((f) => {
+      const key = `${f.ruleId}\0${rel(f.path, here)}\0${norm(f.lines)}`;
+      const n = counts.get(key) || 0;
+      if (!n) return true;
+      counts.set(key, n - 1);
+      hidden++;
+      return false;
+    });
+    return { findings: kept, hidden };
+  } finally {
+    git(["worktree", "remove", "--force", tree], root);
+    rmSync(dir, { recursive: true, force: true });
+    git(["worktree", "prune"], root);
+  }
+}
+
 function cmdScan(args) {
   // Flags are validated before the environment is. A typo in a flag is the
   // user's mistake and should be reported as such even on a machine where
@@ -1239,7 +1348,9 @@ function cmdScan(args) {
   // We accept `--json` and `--sarif` as output-format selectors, plus
   // a defensive `--` literal that some users include explicitly.
   let outputFormat = "human"; // "human" | "json" | "sarif"
-  let failOn = "any"; // "any" | "error" | "warning" | "info" | "never"
+  let failOn = null; // null (config, else "any") | "any" | "error" | "warning" | "info" | "never"
+  let baselineRef; // undefined (config) | null (--no-baseline) | git ref
+  let github = true;
   let density = "auto"; // "auto" | "compact" | "verbose"
   let minSeverity = null; // null | "ERROR" | "WARNING" | "INFO"
   let htmlPath = null;
@@ -1315,6 +1426,17 @@ function cmdScan(args) {
       linkMode = "always";
     } else if (arg === "--no-link") {
       linkMode = "never";
+    } else if (arg === "--baseline" || arg.startsWith("--baseline=")) {
+      const inline = arg.includes("=") ? arg.split("=").slice(1).join("=") : null;
+      baselineRef = needsValue("--baseline", inline, args[++i]);
+      if (baselineRef.startsWith("-")) {
+        process.stderr.write("--baseline expects a git ref, like origin/main\n");
+        process.exit(2);
+      }
+    } else if (arg === "--no-baseline") {
+      baselineRef = null;
+    } else if (arg === "--no-github") {
+      github = false;
     } else if (arg === "--open") {
       openPage = true;
     } else if (arg === "--learn-url" || arg.startsWith("--learn-url=")) {
@@ -1329,7 +1451,8 @@ function cmdScan(args) {
       process.stderr.write(
         "supported: --json, --sarif, --html <file>, --open, --link, --no-link,\n" +
           "           --rule <id>, --severity <level>, --by <lesson|file|rule>, --compact,\n" +
-          "           --verbose, --fail-on <level>, --learn-url <url>. " +
+          "           --verbose, --fail-on <level>, --baseline <ref>, --no-baseline,\n" +
+          "           --no-github, --learn-url <url>. " +
           "run `llm-audit --help` for usage.\n"
       );
       process.exit(2);
@@ -1369,15 +1492,33 @@ function cmdScan(args) {
     }
   }
 
+  // The project config fills in whatever the command line left unsaid.
+  const knownRules = readdirSync(RULES_DIR)
+    .filter((f) => f.endsWith(".yaml"))
+    .map((f) => f.replace(/\.yaml$/, ""));
+  let config;
+  try {
+    config = loadConfig(process.cwd(), knownRules);
+  } catch (err) {
+    if (!(err instanceof ConfigError)) throw err;
+    process.stderr.write(`error: ${err.message}\n`);
+    process.exit(2);
+  }
+  failOn = failOn ?? config.failOn ?? "any";
+  if (!minSeverity && config.severity) minSeverity = config.severity;
+  if (baselineRef === undefined) baselineRef = config.baseline ?? null;
+  const disabled = new Set(config.disable);
+
   // Arguments are good; now the environment has to be.
   ensureSemgrep();
 
   // SARIF is a passthrough of Semgrep's own writer, so our filters and our
   // report have nothing to act on. Say that plainly instead of silently
   // ignoring flags the user typed.
-  if (outputFormat === "sarif" && (ruleFilter.size || minSeverity || htmlPath || openPage || linkMode === "always")) {
+  if (outputFormat === "sarif" && (ruleFilter.size || minSeverity || htmlPath || openPage || linkMode === "always" || baselineRef)) {
     process.stderr.write(
-      "--sarif can't be combined with --rule, --severity, --html, --open, or --link.\n" +
+      "--sarif can't be combined with --rule, --severity, --html, --open, --link, or a baseline\n" +
+        "(including severity or baseline from the project config).\n" +
         "run the scan twice, or filter the SARIF downstream.\n"
     );
     process.exit(2);
@@ -1393,7 +1534,49 @@ function cmdScan(args) {
         (!ruleFilter.size || ruleFilter.has(f.ruleId)) &&
         (!minSeverity || sevRank(f.severity) <= sevRank(minSeverity))
     );
-    return { ...envelope, summary: { findings: findings.length }, findings };
+    return { ...envelope, summary: { ...envelope.summary, findings: findings.length }, findings };
+  };
+
+  // One scan, then policy: rules the config turns off, findings an
+  // llm-audit-ignore comment explains, and findings that already existed at
+  // the baseline. What each step removed stays visible: counted in the
+  // output, listed in --json.
+  const notes = { problems: [], disabled: [...disabled] };
+  const scan = () => {
+    const raw = buildEnvelope(runSemgrepJson(targetPaths, { exclude: config.ignore }), targetPaths);
+    let findings = raw.findings.filter((f) => !disabled.has(f.ruleId));
+    const sup = applySuppressions(findings, knownRules);
+    findings = sup.findings;
+    notes.problems = sup.problems;
+    let baseline = null;
+    if (baselineRef) {
+      const b = filterBaseline(findings, baselineRef, targetPaths, config.ignore);
+      findings = b.findings;
+      baseline = { ref: baselineRef, hidden: b.hidden };
+    }
+    return applyFilters({
+      ...raw,
+      summary: { findings: findings.length, suppressed: sup.suppressed.length },
+      findings,
+      suppressed: sup.suppressed,
+      ...(baseline ? { baseline } : {}),
+    });
+  };
+
+  // Inside GitHub Actions, findings also become inline annotations on the
+  // pull request and a summary on the job page.
+  const toGitHub = (envelope, write) => {
+    if (!github || !inGitHubActions()) return;
+    const { groups, unknown } = groupFindings(envelope.findings, LESSONS);
+    for (const f of unknown) groups.push({ lesson: { title: f.ruleId, summary: "" }, hits: [f], severity: f.severity });
+    writeAnnotations(groups, { docs: ruleDocsUrl, write });
+    writeStepSummary(groups, {
+      total: envelope.findings.length,
+      suppressed: envelope.suppressed?.length || 0,
+      baseline: envelope.baseline || null,
+      learnUrl: learnBase(learnUrl),
+      version: getVersion(),
+    });
   };
 
   // Translate the policy into an exit code. `any` keeps the historical
@@ -1408,9 +1591,7 @@ function cmdScan(args) {
 
   if (outputFormat === "human") {
     const startedAt = Date.now();
-    const envelope = applyFilters(
-      buildEnvelope(runSemgrepJson(targetPaths), targetPaths)
-    );
+    const envelope = scan();
     const elapsedMs = Date.now() - startedAt;
     const filtered = Boolean(ruleFilter.size || minSeverity);
     const filterLabel = ruleFilter.size
@@ -1430,6 +1611,8 @@ function cmdScan(args) {
         (density === "auto" && envelope.findings.length > COMPACT_THRESHOLD);
       renderHuman(envelope, { failOn, compact, by: view, elapsedMs, filtered, filterLabel });
     }
+    printScanNotes(envelope, notes, config);
+    toGitHub(envelope, (t) => process.stdout.write(t));
     // Save the scan for `learn` and `prompt`, and say so, whenever a person
     // is reading. Never from CI, and never with --no-link.
     if (linkMode !== "never" && (interactive() || view === "lesson")) {
@@ -1463,6 +1646,7 @@ function cmdScan(args) {
         "--sarif",
         "--metrics=off",
         "--quiet",
+        ...config.ignore.flatMap((g) => ["--exclude", g]),
         "--",
         ...targetPaths,
       ],
@@ -1473,9 +1657,12 @@ function cmdScan(args) {
 
   // outputFormat === "json": wrap the findings in our versioned envelope.
   // Exit 0 on no findings, 1 on findings — same convention as human mode.
-  const envelope = applyFilters(
-    buildEnvelope(runSemgrepJson(targetPaths), targetPaths)
-  );
+  const envelope = scan();
+  // stdout is the JSON, so everything else goes to stderr.
+  for (const p of notes.problems) {
+    process.stderr.write(`warning: llm-audit-ignore at ${displayPath(p.path)}:${p.line} ${p.message}\n`);
+  }
+  toGitHub(envelope, (t) => process.stderr.write(t));
   if (htmlPath) {
     writeHtmlReport(envelope, htmlPath, targetPaths, {
       rules: [...ruleFilter],
@@ -2265,6 +2452,9 @@ SCAN FLAGS
   --severity <level>              Only this severity or worse (error|warning|info)
   --fail-on <level>               Exit 1 only at or above this severity
                                   any (default) | error | warning | info | never
+  --baseline <git-ref>            Only findings new since that commit (e.g. origin/main)
+  --no-baseline                   Ignore a baseline set in the project config
+  --no-github                     In GitHub Actions, skip annotations and the job summary
   --open                          Open the lessons for this scan right away
   --link                          Also print a shareable URL (results ride in the #)
   --no-link                       Don't save the scan for learn/prompt, no hints
@@ -2272,6 +2462,19 @@ SCAN FLAGS
   --json                          Emit findings as JSON (versioned envelope)
   --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
   --html <file>                   Write a standalone HTML report you can share
+
+PROJECT POLICY
+  .llm-audit.json                 Or an "llm-audit" key in package.json. Keys:
+                                  failOn, severity, disable (rule ids),
+                                  ignore (path globs), baseline (git ref)
+  // llm-audit-ignore <rule-id> -- <reason>
+                                  On the flagged line or the line above it.
+                                  A reason is required; suppressions are
+                                  counted in the output and listed in --json
+
+EXIT CODES
+  0  nothing at or above --fail-on    1  findings at or above --fail-on
+  2  usage or config error            127  semgrep is not installed
 
 INIT FLAGS
   --force                         Overwrite existing files
