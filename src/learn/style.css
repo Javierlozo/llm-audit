@@ -1,0 +1,202 @@
+/* The learn page reads like a field manual, not a dashboard: a serif for the
+   lessons, a condensed grotesque for labels, warm paper, and amber only where
+   the code is at fault. Fonts are subsets embedded by learn.mjs (OFL). */
+
+:root{
+  --paper:oklch(97.6% .006 85); --paper-2:oklch(94.6% .009 85); --rule:oklch(86% .012 85);
+  --ink:oklch(23% .02 255); --ink-2:oklch(35% .018 255); --muted:oklch(52% .015 255);
+  --hit:oklch(92.5% .055 86); --hit-ink:oklch(50% .12 70);
+  --error:oklch(52% .17 28); --warning:oklch(56% .12 72); --info:oklch(50% .11 250);
+  --ok:oklch(50% .11 155);
+  --serif:"Literata",Charter,"Iowan Old Style",Georgia,serif;
+  --label:"Archivo","Arial Narrow",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:48px; --s8:64px; --s9:96px;
+  --leading:1.62;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:oklch(19.5% .012 255); --paper-2:oklch(23.5% .014 255); --rule:oklch(33% .014 255);
+    --ink:oklch(93% .008 85); --ink-2:oklch(83% .01 85); --muted:oklch(67% .012 255);
+    --hit:oklch(27.5% .04 80); --hit-ink:oklch(82% .13 82);
+    --error:oklch(72% .14 25); --warning:oklch(81% .13 82); --info:oklch(74% .1 250);
+    --ok:oklch(75% .12 155);
+    --leading:1.7;
+    color-scheme:dark;
+  }
+}
+
+@font-face{font-family:"Literata";src:url(@@FONT_LITERATA@@) format("woff2");
+  font-weight:400 600;font-style:normal;font-display:swap}
+@font-face{font-family:"Archivo";src:url(@@FONT_ARCHIVO@@) format("woff2");
+  font-weight:680;font-style:normal;font-display:swap}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:17px/var(--leading) var(--serif);font-optical-sizing:auto;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+#app{max-width:1160px;margin:0 auto;padding:0 clamp(16px,4vw,48px) var(--s9)}
+p{margin:0 0 var(--s4)}
+code,pre{font-family:var(--mono)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--hit-ink);outline-offset:3px}
+.offscreen{position:fixed;left:-9999px;top:0}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.label,.eyebrow,h3,.meta,.btn,.toc,.masthead,.lesson-no,.tally-label{
+  font-family:var(--label);font-weight:680}
+
+/* masthead */
+.masthead{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s4);
+  padding:var(--s5) 0 var(--s3);border-bottom:2px solid var(--ink);font-size:15px;letter-spacing:.01em}
+.masthead .word{font-size:20px;letter-spacing:-.01em}
+.masthead .word span{color:var(--muted)}
+.masthead-note{font-family:var(--serif);font-weight:400;font-size:14px;color:var(--muted)}
+
+/* head of the report */
+.head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--s6);align-items:end;
+  padding:var(--s7) 0 var(--s6);border-bottom:1px solid var(--rule)}
+.eyebrow{margin:0 0 var(--s3);font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eyebrow code{font-size:12.5px;letter-spacing:0;text-transform:none;color:var(--ink-2)}
+.eyebrow .warn{color:var(--warning)}
+h1{font-family:var(--label);font-weight:680;font-size:clamp(34px,5.4vw,60px);line-height:1;
+  letter-spacing:-.02em;margin:0 0 var(--s4);text-wrap:balance}
+.head .standfirst{max-width:58ch;margin:0;color:var(--ink-2)}
+.standfirst b{font-weight:600}
+.sev-error{color:var(--error)} .sev-warning{color:var(--warning)} .sev-info{color:var(--info)}
+.note{max-width:58ch;margin:var(--s4) 0 0;padding:var(--s3) var(--s4);border:1px solid var(--rule);
+  background:var(--paper-2);font-size:15px}
+
+.tally{display:flex;flex-direction:column;gap:var(--s2);align-items:flex-end}
+.tally-label{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.tally-boxes{display:flex;flex-wrap:wrap;gap:3px;max-width:220px;justify-content:flex-end}
+.tally-boxes i{width:14px;height:14px;border:1.5px solid var(--ink);display:block}
+.tally-boxes i.on{background:var(--ink)}
+
+.library .install{margin:0;min-width:260px}
+
+/* layout: index on the left, lesson on the right */
+.layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:var(--s8);align-items:start;
+  padding-top:var(--s6)}
+.side{position:sticky;top:var(--s5);min-width:0}
+.toc{font-size:15px}
+.toc .label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+  margin:0 0 var(--s3)}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc-item{display:grid;grid-template-columns:1.6em minmax(0,1fr) auto;gap:0 var(--s2);align-items:baseline;
+  width:100%;text-align:left;background:none;border:0;padding:var(--s2) 0;cursor:pointer;
+  color:var(--ink-2);font-weight:680;border-bottom:1px solid var(--rule)}
+.toc-no{color:var(--muted);font-variant-numeric:tabular-nums}
+.toc-title{font-family:var(--serif);font-weight:400;line-height:1.35}
+.toc-n{font-variant-numeric:tabular-nums;color:var(--muted)}
+.toc-item:hover .toc-title{text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:3px}
+.toc-item.current{color:var(--ink)}
+.toc-item.current .toc-no{color:var(--hit-ink)}
+.toc-item.current .toc-title{font-weight:600}
+.toc-item.fixed .toc-no{color:var(--ok)}
+.toc-item.fixed .toc-title{color:var(--muted);text-decoration:line-through;text-decoration-thickness:1px}
+.side > p{margin:var(--s4) 0 0}
+
+/* the lesson */
+.lesson{min-width:0;max-width:780px}
+.lesson-no{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 var(--s3)}
+h2{font-family:var(--label);font-weight:680;font-size:clamp(28px,3.6vw,40px);line-height:1.05;
+  letter-spacing:-.015em;margin:0 0 var(--s3);text-wrap:balance}
+h2:focus{outline:none}
+.lede{font-size:21px;line-height:1.45;color:var(--ink-2);margin:0 0 var(--s3);max-width:44ch}
+.meta{font-size:14px;letter-spacing:.02em;color:var(--muted);margin:0}
+.meta b{font-weight:680;text-transform:uppercase;letter-spacing:.06em}
+
+.part{display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--s5);
+  margin-top:var(--s7);padding-top:var(--s4);border-top:1px solid var(--ink)}
+h3{margin:0;font-size:13px;line-height:1.35;letter-spacing:.09em;text-transform:uppercase}
+.part-body{min-width:0}
+.part-body > p,.part-body li{max-width:64ch}
+.label{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:var(--s5) 0 var(--s2)}
+.part-body > .label:first-child{margin-top:0}
+
+/* code */
+.code{margin:0;background:var(--paper-2);border:1px solid var(--rule);padding:var(--s3) 0;
+  overflow-x:auto;font-size:13.5px;line-height:1.6}
+.code code{display:block;min-width:max-content}
+.row{display:flex;padding-right:var(--s4)}
+.row.hit{background:var(--hit)}
+.ln{flex:none;width:3.6em;padding-right:var(--s4);text-align:right;color:var(--muted);user-select:none;
+  font-variant-numeric:tabular-nums}
+.row.hit .ln{color:var(--hit-ink);font-weight:700}
+.src{white-space:pre}
+
+.occs{display:flex;flex-direction:column;gap:var(--s5)}
+.occ-loc{display:flex;flex-wrap:wrap;align-items:baseline;gap:var(--s1) var(--s3);margin-bottom:var(--s2);
+  font:13.5px/1.5 var(--mono)}
+.occ-loc .path{font-weight:700;overflow-wrap:anywhere}
+.occ-loc .where{color:var(--muted)}
+.occ-loc .rule-id{color:var(--muted);font-size:12px;margin-left:auto}
+
+.attack{list-style:none;counter-reset:s;padding:0;margin:var(--s5) 0}
+.attack li{counter-increment:s;display:grid;grid-template-columns:2em minmax(0,1fr);margin:0 0 var(--s3)}
+.attack li::before{content:counter(s) ".";font-family:var(--label);font-weight:680;color:var(--error);
+  font-variant-numeric:tabular-nums}
+.cost{max-width:64ch}
+.cost b{font-family:var(--label);font-weight:680;text-transform:uppercase;letter-spacing:.06em;
+  font-size:14px;color:var(--error);margin-right:.4em}
+
+.spot{margin:0;padding-left:1.2em}
+.spot li{margin:0 0 var(--s2)}
+.spot li::marker{color:var(--muted)}
+
+/* prompts */
+.prompt{border:1px solid var(--ink);background:var(--paper)}
+.prompt-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  padding:var(--s2) var(--s2) var(--s2) var(--s4);border-bottom:1px solid var(--ink)}
+.prompt-bar .label{margin:0}
+.prompt pre{margin:0;padding:var(--s4);max-height:360px;overflow:auto;font-size:13.5px;line-height:1.6;
+  white-space:pre-wrap;color:var(--ink-2)}
+
+.safe{margin-top:var(--s4)}
+.safe summary{cursor:pointer;font-family:var(--label);font-weight:680;font-size:15px;color:var(--ok);
+  list-style-position:outside;padding:var(--s1) 0}
+.safe[open] summary{margin-bottom:var(--s3)}
+
+/* buttons: outlined, square, one weight */
+.btn{display:inline-flex;align-items:center;gap:var(--s2);background:none;border:1.5px solid var(--ink);
+  padding:6px 14px;font-size:14px;letter-spacing:.02em;cursor:pointer;border-radius:0;color:var(--ink)}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.done{background:var(--ok);border-color:var(--ok);color:var(--paper)}
+.btn.quiet{border-color:transparent;padding-left:0;text-decoration:underline;text-underline-offset:3px;
+  text-decoration-thickness:1px}
+.btn.quiet:hover{background:none;color:var(--hit-ink)}
+.occs > .btn{align-self:flex-start}
+.check::before{content:"";width:13px;height:13px;border:1.5px solid currentColor;display:inline-block}
+.check.on{border-color:var(--ok);color:var(--ok)}
+.check.on::before{content:"\2713";display:grid;place-items:center;font-size:11px;line-height:1;
+  background:var(--ok);color:var(--paper);border-color:var(--ok)}
+.check.on:hover{background:none;color:var(--ok)}
+
+.lesson-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s4);
+  margin-top:var(--s8);padding-top:var(--s4);border-top:2px solid var(--ink)}
+.next{font-family:var(--label);font-weight:680;font-size:16px;background:none;border:0;padding:0;
+  cursor:pointer;text-align:right;color:var(--ink)}
+.next span{display:block;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.next:hover{color:var(--hit-ink)}
+
+.page-foot{margin-top:var(--s9);padding-top:var(--s4);border-top:1px solid var(--rule);
+  color:var(--muted);font-size:14px;max-width:70ch}
+
+@media (max-width:900px){
+  .head{grid-template-columns:minmax(0,1fr);gap:var(--s5);padding:var(--s6) 0 var(--s5)}
+  .tally{align-items:flex-start}
+  .tally-boxes{justify-content:flex-start}
+  .layout{grid-template-columns:minmax(0,1fr);gap:var(--s6);padding-top:var(--s5)}
+  .side{position:static}
+  .part{grid-template-columns:minmax(0,1fr);gap:var(--s3);margin-top:var(--s6)}
+  .masthead-note{display:none}
+  .occ-loc .rule-id{margin-left:0;width:100%}
+  body{font-size:16.5px}
+}
+@media print{
+  .side,.prompt-bar .btn,.lesson-foot,.masthead-note{display:none}
+  .layout{grid-template-columns:1fr}
+}

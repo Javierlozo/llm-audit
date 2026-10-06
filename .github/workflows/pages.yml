@@ -1,0 +1,50 @@
+# The hosted learn page. `scan` prints a link to it with the findings packed
+# into the URL fragment, which browsers never send to the server, so this is
+# a static file and nothing else: no backend, no storage, no analytics.
+#
+# One-time setup: repo Settings -> Pages -> Source: GitHub Actions.
+# Self-hosting instead? Serve `node tools/build-site.mjs` output anywhere and
+# point the CLI at it with --learn-url or LLM_AUDIT_LEARN_URL.
+name: pages
+
+on:
+  push:
+    branches: [main]
+    paths: ["src/**", "rules/**", "test/fixtures/**", "tools/build-site.mjs", ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to SHA per https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d  # v6.0.0
+      - name: build the learn page
+        run: node tools/build-site.mjs site
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1

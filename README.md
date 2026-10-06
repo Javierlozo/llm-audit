@@ -119,6 +119,41 @@ npx llm-audit scan
 That's enough to decide if it's worth keeping. To make it stick, see **Adopt in
 your project** below.
 
+## Learn what's failing
+
+At a terminal, a scan with findings ends with a link:
+
+```
+Learn what's failing: Open the lessons ↗
+```
+
+It opens a page with one lesson per kind of mistake. Each lesson shows every
+place it occurs in your code, explains what is wrong, walks through how someone
+would use it against you, and gives you two prompts to paste into Claude Code,
+Cursor, or whatever wrote the code: one that fixes every listed place, and one
+that checks the rest of the project for the same mistake. You can mark lessons
+fixed as you go.
+
+Nothing is uploaded. The findings travel in the part of the URL after `#`,
+which browsers never send to a server, so the page is a static file with no
+backend. The page itself has a CSP that blocks every network request. The link
+does carry code snippets, so secret-shaped strings are redacted before they go
+in, and the link is only printed at an interactive terminal, never into CI
+logs, unless you ask for it.
+
+```bash
+npx llm-audit scan --open      # same page, from a private local file
+npx llm-audit scan --link      # print the link even when piped or in CI
+npx llm-audit scan --no-link   # never print it
+npx llm-audit demo --open      # every lesson, on the bundled fixtures
+```
+
+Without a link, the page is the lesson library: all eleven lessons, which cover
+all twelve rules. It is built from this repo by `node tools/build-site.mjs` and
+deployed by `.github/workflows/pages.yml`. To host it yourself, serve that file
+anywhere and point the CLI at it with `--learn-url <url>` or
+`LLM_AUDIT_LEARN_URL`.
+
 ## Machine-readable output (CI, agents, dashboards)
 
 `scan` has two machine-readable formats, plus the HTML report covered below:
@@ -394,12 +429,17 @@ long version is in [`docs/AI-FAILURE-MODES.md`](docs/AI-FAILURE-MODES.md).
 rules/          Semgrep YAML rules, one per file
 src/cli.mjs     CLI entry: scan, demo, doctor, rules, init, uninstall
 src/report.mjs  The standalone HTML report
+src/lessons.mjs One lesson per kind of mistake: the attack, the fix prompt,
+                and the check prompt. Plain data, shared with the learn page
+src/share.mjs   Packs a scan into the learn link's #fragment, with redaction
+src/learn.mjs   Renders the learn page (src/learn/) as one self-contained file
 src/rule-docs.mjs
                 Parses docs/RULES.md, the material that both the
                 `rules <id>` command and the report render
 templates/      Files installed by `llm-audit init` (husky hook, GH Action)
 test/           Vulnerable + safe fixtures per rule, plus the CLI suite
-tools/          Dev only: regenerates the README hero and command map
+tools/          Dev only: regenerates the README hero and command map, and
+                builds the hosted learn page
 docs/           RULES.md (rule reference, read at runtime), BRIEF.md (pitch),
                 AI-FAILURE-MODES.md, COMPETITIVE-LANDSCAPE.md, SECURITY-AUDIT.md
 ```
