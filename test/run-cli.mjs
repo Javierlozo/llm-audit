@@ -29,6 +29,10 @@ import {
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { LESSONS, fixPrompt } from "../src/lessons.mjs";
+import { learnLink, unpack, redact } from "../src/share.mjs";
+import { renderLearnPage } from "../src/learn.mjs";
 
 const PKG_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const CLI = join(PKG_ROOT, "src", "cli.mjs");
@@ -330,6 +334,124 @@ check("the installed workflow does not depend on the project's dependencies", ()
   assert(!/npm ci\b/.test(steps), "the workflow must not run `npm ci`");
   assert(!/npm i(nstall)?\b(?!.*-g)/.test(steps), "the workflow must not install project deps");
   assert(/npx --yes llm-audit scan/.test(steps), "expected the scan step");
+});
+
+// --- the learn page ---------------------------------------------------------
+//
+// Lessons are the teaching layer, the learn link carries a scan to them, and
+// the page renders whatever a link says. The page's input is untrusted (anyone
+// can craft a link), so the checks below lean on what it must never do.
+
+check("every rule belongs to exactly one lesson, and every lesson is complete", () => {
+  const ruleIds = readdirSync(join(PKG_ROOT, "rules"))
+    .filter((f) => f.endsWith(".yaml"))
+    .map((f) => f.replace(/\.yaml$/, ""));
+  for (const id of ruleIds) {
+    const owners = LESSONS.filter((l) => l.rules.includes(id));
+    assertEqual(owners.length, 1, `lessons teaching '${id}'`);
+  }
+  for (const l of LESSONS) {
+    for (const r of l.rules) assert(ruleIds.includes(r), `lesson '${l.slug}' names unknown rule '${r}'`);
+    for (const key of ["slug", "title", "summary", "askPrompt"]) {
+      assert(typeof l[key] === "string" && l[key].length > 0, `lesson '${l.slug}' has no ${key}`);
+    }
+    assert(l.explanation.length && l.spotIt.length && l.exploit.steps.length, `lesson '${l.slug}' has an empty list`);
+    assert(l.fix.problem && l.fix.steps.length && l.fix.after, `lesson '${l.slug}' has an incomplete fix`);
+  }
+  assertEqual(new Set(LESSONS.map((l) => l.slug)).size, LESSONS.length, "unique lesson slugs");
+});
+
+check("the fix prompt lists each place once", () => {
+  const text = fixPrompt(LESSONS[0], [
+    { path: "a.ts", startLine: 3, endLine: 3 },
+    { path: "a.ts", startLine: 3, endLine: 3 },
+    { path: "b.ts", startLine: 4, endLine: 9 },
+  ]);
+  assertEqual(text.split("a.ts line 3").length - 1, 1, "a.ts line 3 occurrences");
+  assert(text.includes("b.ts lines 4 to 9"), "expected a line range");
+});
+
+check("secrets are redacted before they go into a link", () => {
+  for (const line of [
+    `const client = new OpenAI({ apiKey: "sk-proj-abcdefghijklmnop1234" });`,
+    `const k = "sk-ant-api03-abcdefghijklmnopqrstuv";`,
+    `aws = "AKIAABCDEFGHIJKLMNOP"`,
+    `token: "ghp_abcdefghijklmnopqrstuvwxyz123456"`,
+    `password = "correct-horse-battery-staple"`,
+  ]) {
+    const out = redact(line);
+    assert(out.includes("[redacted]"), `not redacted: ${line}`);
+    assert(!/abcdefghijklmnop|ABCDEFGHIJKLMNOP|horse-battery/.test(out), `secret survived: ${out}`);
+  }
+  assertEqual(redact("const x = process.env.OPENAI_API_KEY;"), "const x = process.env.OPENAI_API_KEY;", "env reads untouched");
+});
+
+function fakeEnvelope(n, lines = (i) => ["const a = 1;"]) {
+  return {
+    tool: { version: "0.0.0" },
+    repo: { branch: "main", shortCommit: "abcdef12", dirty: true },
+    scannedPaths: ["src"],
+    findings: Array.from({ length: n }, (_, i) => ({
+      ruleId: "hardcoded-llm-api-key",
+      severity: "ERROR",
+      path: `src/file-${i}.ts`,
+      startLine: i + 1,
+      endLine: i + 1,
+      lines: lines(i).join("\n"),
+    })),
+  };
+}
+
+check("a learn link round-trips its scan in the fragment", () => {
+  const { url, detail } = learnLink(fakeEnvelope(3), { base: "https://example.test/learn/" });
+  assertEqual(detail, "context", "detail");
+  assert(url.startsWith("https://example.test/learn/#r="), `unexpected url: ${url.slice(0, 60)}`);
+  const payload = unpack(url.split("#r=")[1]);
+  assertEqual(payload.v, 1, "payload version");
+  assertEqual(payload.f.length, 3, "findings in payload");
+  assertEqual(payload.f[1][2], "src/file-1.ts", "path");
+  assertEqual(payload.repo.dirty, true, "provenance");
+});
+
+check("a learn link sheds code before it gets too long to paste", () => {
+  // Incompressible lines, so size tracks the code and not just the count.
+  const noisy = (i) =>
+    Array.from({ length: 5 }, (_, j) => createHash("sha256").update(`${i}:${j}`).digest("hex"));
+  const big = learnLink(fakeEnvelope(60, noisy));
+  assert(big.url && big.detail !== "context", `expected trimmed detail, got ${big.detail}`);
+  const huge = learnLink(fakeEnvelope(4000, noisy));
+  assertEqual(huge.url, null, "an unpasteable link is not offered");
+});
+
+check("the learn page runs only its own hashed code and loads nothing", () => {
+  const html = renderLearnPage({ version: "0.0.0" });
+  const csp = html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+  assert(csp.includes("default-src 'none'"), "CSP must default to none");
+  const hash = (t) => `'sha256-${createHash("sha256").update(t, "utf8").digest("base64")}'`;
+  const style = html.match(/<style>([\s\S]*?)<\/style>/)[1];
+  assert(csp.includes(hash(style)), "style hash does not match the inline style");
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+  assertEqual(scripts.length, 1, "executable inline scripts");
+  assert(csp.includes(hash(scripts[0])), "script hash does not match the inline script");
+  assert(!/\b(src|href)="(https?:)?\/\//.test(html), "the page must not reference anything remote");
+  assert(!/\sstyle="/.test(html), "inline style attributes are blocked by the CSP");
+  assert(scripts[0].includes(fixPrompt.toString()), "the page must use the CLI's fixPrompt, not a copy");
+  assert(!scripts[0].includes("@@PROMPT@@"), "fixPrompt placeholder was not replaced");
+});
+
+check("scan data cannot break out of the learn page's data block", () => {
+  const html = renderLearnPage({
+    scan: { v: 1, f: [["x", "ERROR", "a.ts", 1, 1, 1, ["</script><script>alert(1)</script>"]]] },
+  });
+  assert(!html.includes("</script><script>alert(1)"), "a code line closed the data block");
+  assertEqual((html.match(/<\/script>/g) || []).length, 5, "closing script tags (4 data + 1 code)");
+});
+
+check("--learn-url must be a plain http(s) URL", () => {
+  for (const bad of ["javascript:alert(1)", "https://x.test/#frag", "ftp://x.test/"]) {
+    const r = run(["scan", "--learn-url", bad], { env: { PATH: "" } });
+    assertEqual(r.status, 2, `exit code for ${bad}`);
+  }
 });
 
 check("docs/RULES.md ships with the package", () => {
@@ -737,6 +859,45 @@ if (!hasSemgrep()) {
     const r = run(["scan", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
     // eslint-disable-next-line no-control-regex
     assert(!/\u001b\[/.test(r.stdout), "ANSI escapes leaked into piped output");
+  });
+
+  check("scan --open writes a private learn page with the scan in it", () => {
+    const r = run(["scan", "--open", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")], {
+      env: { ...process.env, LLM_AUDIT_NO_BROWSER: "1" },
+    });
+    assertEqual(r.status, 1, "exit code still reflects the findings");
+    const file = (r.stderr.match(/Learn page written to (\S+)/) || [])[1];
+    assert(file && existsSync(file), `no learn page reported: ${r.stderr.trim()}`);
+    try {
+      const html = readFileSync(file, "utf8");
+      assert(html.includes('id="scan"'), "the scan is not embedded");
+      assert(html.includes("hardcoded-llm-api-key"), "the finding is not in the page");
+      assert(!/sk-(proj-|ant-)?[A-Za-z0-9]{20,}/.test(html), "a key from the fixture reached the page");
+      if (process.platform !== "win32") {
+        const mode = spawnSync("stat", process.platform === "darwin" ? ["-f", "%Lp", file] : ["-c", "%a", file], { encoding: "utf8" }).stdout.trim();
+        assertEqual(mode, "600", "file mode");
+      }
+    } finally {
+      rmSync(dirname(file), { recursive: true, force: true });
+    }
+  });
+
+  check("the learn link stays out of piped output unless asked for", () => {
+    const target = join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts");
+    const quiet = run(["scan", target]);
+    assert(!quiet.stdout.includes("#r="), "a piped scan printed the learn link");
+    const asked = run(["scan", "--link", target]);
+    const url = (asked.stdout.match(/https:\/\/\S+#r=\S+/) || [])[0];
+    assert(url, "--link did not print a link");
+    const payload = unpack(url.split("#r=")[1]);
+    assert(payload.f.every((f) => f[0] === "hardcoded-llm-api-key"), "unexpected rule in payload");
+    assert(!JSON.stringify(payload).match(/sk-(proj-|ant-)?[A-Za-z0-9]{20,}/), "a key travelled in the link");
+  });
+
+  check("--json --link keeps stdout pure JSON and puts the link on stderr", () => {
+    const r = run(["scan", "--json", "--link", join(FIXTURES, "hardcoded-llm-api-key", "vulnerable.ts")]);
+    JSON.parse(r.stdout);
+    assert(/#r=/.test(r.stderr), "expected the link on stderr");
   });
 
   check("--sarif emits valid SARIF 2.1.0", () => {

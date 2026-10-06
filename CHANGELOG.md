@@ -9,6 +9,23 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Added
+
+- The learn page. A scan with findings ends with a link to one lesson per kind
+  of mistake: every place it occurs in your code, how it gets exploited, a
+  prompt that fixes every listed place, and a prompt that checks the rest of
+  the project. The findings travel in the URL fragment, so nothing is
+  uploaded; the page is static and its CSP blocks all network access.
+  Secret-shaped strings are redacted from the link, and it is printed only at
+  an interactive terminal unless you pass `--link`.
+- `scan --open` and `demo --open` write the same page to a private temp file
+  and open it in your browser. `--no-link` suppresses the link, and
+  `--learn-url` (or `LLM_AUDIT_LEARN_URL`) points it at a self-hosted copy.
+- The page embeds subsets of Literata and Archivo (SIL OFL 1.1, licenses in
+  `src/learn/fonts/`), so it still loads nothing from the network.
+- Lessons for all twelve rules (`src/lessons.mjs`), five of them adapted from
+  Vibe Code Security Tutor.
+
 ### Changed
 
 - OWASP labels now follow the 2026 edition of the OWASP Top 10 for LLM

@@ -23,12 +23,16 @@ import {
   mkdirSync,
   readFileSync,
   writeFileSync,
+  mkdtempSync,
 } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve, relative, isAbsolute } from "node:path";
 import { createInterface } from "node:readline";
+import { tmpdir } from "node:os";
 import { parseRuleDocs, readRuleMeta, readSafeExample } from "./rule-docs.mjs";
 import { renderHtmlReport } from "./report.mjs";
+import { buildPayload, learnLink, DEFAULT_LEARN_URL } from "./share.mjs";
+import { renderLearnPage } from "./learn.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -783,6 +787,130 @@ function writeHtmlReport(envelope, htmlPath, targetPaths, filters = {}) {
   else process.stderr.write(note);
 }
 
+// ── The learn page ──────────────────────────────────────────────────────────
+// The terminal says what failed. The learn page teaches it: one lesson per
+// kind of mistake, every place it occurs, how it gets exploited, and a prompt
+// to fix it. It reaches the user two ways: a link whose fragment carries the
+// scan (nothing uploaded; see share.mjs), or --open, which writes the page to
+// a private temp file and opens it.
+
+function learnBase(flag) {
+  return flag || process.env.LLM_AUDIT_LEARN_URL || DEFAULT_LEARN_URL;
+}
+
+function shareOptions(stripPrefix, filtered) {
+  return {
+    context: (f) => {
+      const ctx = readContext(f.path, f.startLine, f.endLine);
+      return ctx ? { from: ctx.from, lines: ctx.lines } : null;
+    },
+    display: (p) => displayPath(p, stripPrefix),
+    filtered,
+  };
+}
+
+// The link holds code snippets, so by default it is shown to a person at a
+// terminal and kept out of CI logs, which are often public. --link forces it.
+function wantsLink(mode) {
+  if (mode === "always") return true;
+  if (mode === "never") return false;
+  return Boolean(process.stdout.isTTY) && !process.env.CI;
+}
+
+// OSC 8 makes "Open the lessons" itself clickable, instead of a few
+// kilobytes of URL wrapping across the screen. Only for terminals known to
+// support it: elsewhere the escape is printed as garbage. FORCE_HYPERLINK is
+// the convention other CLIs use to override detection either way.
+function supportsHyperlinks() {
+  const force = process.env.FORCE_HYPERLINK;
+  if (force !== undefined) return force !== "0" && force !== "false";
+  if (!process.stdout.isTTY || process.env.CI) return false;
+  const term = process.env.TERM_PROGRAM || "";
+  return (
+    ["iTerm.app", "vscode", "WezTerm", "ghostty", "Hyper", "Tabby"].includes(term) ||
+    Boolean(process.env.WT_SESSION || process.env.KITTY_WINDOW_ID || process.env.KONSOLE_VERSION)
+  );
+}
+
+function printLearnLink(envelope, { base, stripPrefix, filtered } = {}) {
+  const { url, detail } = learnLink(envelope, {
+    ...shareOptions(stripPrefix, filtered),
+    base: learnBase(base),
+  });
+  console.log("");
+  if (!url) {
+    console.log(
+      `${c.bold}Learn what's failing:${c.reset} too many findings to fit in a link. ` +
+        `Run with ${c.bold}--open${c.reset} to open the lessons from a local file.`
+    );
+    return;
+  }
+  const trimmed =
+    detail === "context"
+      ? ""
+      : detail === "match"
+        ? " Surrounding lines were left out to keep it short."
+        : " Code was left out to keep it short.";
+  if (supportsHyperlinks()) {
+    console.log(
+      `${c.bold}Learn what's failing:${c.reset} ` +
+        `\u001b]8;;${url}\u001b\\${c.yellow}Open the lessons \u2197${c.reset}\u001b]8;;\u001b\\`
+    );
+  } else {
+    console.log(`${c.bold}Learn what's failing:${c.reset}`);
+    console.log(url);
+  }
+  const width = Math.min(Math.max(Number(process.env.COLUMNS) || process.stdout.columns || 80, 60), 100);
+  const note =
+    "Your results are in the part after the #, which browsers never send to a server. " +
+    `It includes code snippets, with secrets redacted.${trimmed} ` +
+    "Prefer a local file? Add --open.";
+  console.log(`${c.dim}${wrap(note, width, "")}${c.reset}`);
+}
+
+// Write the learn page with this scan embedded, to a private temp directory,
+// and hand it to the system browser. The note goes to stderr when stdout is
+// carrying machine output.
+function openLearnPage(envelope, { stripPrefix, filtered } = {}) {
+  const payload = buildPayload(envelope, {
+    ...shareOptions(stripPrefix, filtered),
+    detail: "context",
+  });
+  const html = renderLearnPage({ scan: payload, version: getVersion() });
+  let file;
+  try {
+    const dir = mkdtempSync(join(tmpdir(), "llm-audit-learn-"));
+    file = join(dir, "index.html");
+    writeFileSync(file, html, { mode: 0o600 });
+  } catch (err) {
+    process.stderr.write(`error: could not write the learn page: ${err.message}\n`);
+    return;
+  }
+
+  const say = (text) =>
+    process.stdout.isTTY || process.env.FORCE_COLOR
+      ? process.stdout.write(text)
+      : process.stderr.write(text);
+
+  // Tests and headless boxes set this to get the file without a browser.
+  if (process.env.LLM_AUDIT_NO_BROWSER) {
+    say(`\nLearn page written to ${file}\n`);
+    return;
+  }
+  const [cmd, args] =
+    process.platform === "darwin"
+      ? ["open", [file]]
+      : process.platform === "win32"
+        ? ["cmd", ["/c", "start", "", file]]
+        : ["xdg-open", [file]];
+  const r = spawnSync(cmd, args, { stdio: "ignore", timeout: 5000 });
+  say(
+    r.status === 0
+      ? `\nOpened the lessons in your browser. ${c.dim}${file}${c.reset}\n`
+      : `\nCould not open a browser. The learn page is at ${file}\n`
+  );
+}
+
 function cmdScan(args) {
   // Flags are validated before the environment is. A typo in a flag is the
   // user's mistake and should be reported as such even on a machine where
@@ -798,6 +926,9 @@ function cmdScan(args) {
   let minSeverity = null; // null | "ERROR" | "WARNING" | "INFO"
   let htmlPath = null;
   let groupBy = "file"; // "file" | "rule"
+  let linkMode = "auto"; // "auto" | "always" | "never"
+  let openPage = false;
+  let learnUrl = null;
   const ruleFilter = new Set();
   const paths = [];
   const FAIL_LEVELS = ["any", "error", "warning", "info", "never"];
@@ -862,11 +993,25 @@ function cmdScan(args) {
     } else if (arg === "--html" || arg.startsWith("--html=")) {
       const inline = arg.includes("=") ? arg.split("=").slice(1).join("=") : null;
       htmlPath = needsValue("--html", inline, args[++i]);
+    } else if (arg === "--link") {
+      linkMode = "always";
+    } else if (arg === "--no-link") {
+      linkMode = "never";
+    } else if (arg === "--open") {
+      openPage = true;
+    } else if (arg === "--learn-url" || arg.startsWith("--learn-url=")) {
+      const inline = arg.includes("=") ? arg.split("=").slice(1).join("=") : null;
+      learnUrl = needsValue("--learn-url", inline, args[++i]);
+      if (!/^https?:\/\/[^#\s]+$/.test(learnUrl)) {
+        process.stderr.write("--learn-url expects an http(s) URL with no #fragment\n");
+        process.exit(2);
+      }
     } else if (arg.startsWith("-")) {
       process.stderr.write(`unknown flag: ${arg}\n`);
       process.stderr.write(
-        "supported: --json, --sarif, --html <file>, --rule <id>, --severity <level>,\n" +
-          "           --by <file|rule>, --compact, --verbose, --fail-on <level>. " +
+        "supported: --json, --sarif, --html <file>, --open, --link, --no-link,\n" +
+          "           --rule <id>, --severity <level>, --by <file|rule>, --compact,\n" +
+          "           --verbose, --fail-on <level>, --learn-url <url>. " +
           "run `llm-audit --help` for usage.\n"
       );
       process.exit(2);
@@ -912,9 +1057,9 @@ function cmdScan(args) {
   // SARIF is a passthrough of Semgrep's own writer, so our filters and our
   // report have nothing to act on. Say that plainly instead of silently
   // ignoring flags the user typed.
-  if (outputFormat === "sarif" && (ruleFilter.size || minSeverity || htmlPath)) {
+  if (outputFormat === "sarif" && (ruleFilter.size || minSeverity || htmlPath || openPage || linkMode === "always")) {
     process.stderr.write(
-      "--sarif can't be combined with --rule, --severity, or --html.\n" +
+      "--sarif can't be combined with --rule, --severity, --html, --open, or --link.\n" +
         "run the scan twice, or filter the SARIF downstream.\n"
     );
     process.exit(2);
@@ -964,6 +1109,11 @@ function cmdScan(args) {
           ? `severity (${minSeverity.toLowerCase()} or worse)`
           : null,
     });
+    const filtered = Boolean(ruleFilter.size || minSeverity);
+    if (envelope.findings.length && wantsLink(linkMode)) {
+      printLearnLink(envelope, { base: learnUrl, filtered });
+    }
+    if (openPage) openLearnPage(envelope, { filtered });
     if (htmlPath) {
       writeHtmlReport(envelope, htmlPath, targetPaths, {
         rules: [...ruleFilter],
@@ -1006,13 +1156,31 @@ function cmdScan(args) {
       severity: minSeverity,
     });
   }
+  const filtered = Boolean(ruleFilter.size || minSeverity);
+  if (openPage) openLearnPage(envelope, { filtered });
+  // stdout is the JSON. An explicitly requested link goes to stderr.
+  if (linkMode === "always" && envelope.findings.length) {
+    const { url } = learnLink(envelope, {
+      ...shareOptions(undefined, filtered),
+      base: learnBase(learnUrl),
+    });
+    process.stderr.write(url ? `${url}\n` : "too many findings to fit in a link; use --open\n");
+  }
 
   process.stdout.write(JSON.stringify(envelope, null, 2));
   process.stdout.write("\n");
   process.exit(exitFor(envelope.findings));
 }
 
-function cmdDemo() {
+function cmdDemo(args = []) {
+  const openPage = args.includes("--open");
+  for (const a of args) {
+    if (a !== "--open") {
+      process.stderr.write(`unknown flag for demo: ${a}\n`);
+      process.stderr.write("demo takes only --open. run `llm-audit --help` for usage.\n");
+      process.exit(2);
+    }
+  }
   ensureSemgrep();
   const FIXTURES_DIR = join(PKG_ROOT, "test", "fixtures");
   if (!existsSync(FIXTURES_DIR)) {
@@ -1072,6 +1240,8 @@ function cmdDemo() {
     [FIXTURES_DIR]
   );
   renderHuman(envelope, { ruleCount: ruleIds.length, stripPrefix: PKG_ROOT });
+  if (wantsLink("auto")) printLearnLink(envelope, { stripPrefix: PKG_ROOT });
+  if (openPage) openLearnPage(envelope, { stripPrefix: PKG_ROOT });
 
   console.log("");
   console.log("Next steps:");
@@ -1711,6 +1881,7 @@ EXAMPLES
   llm-audit scan src              Scan a directory (human-readable)
   llm-audit scan --json src       Scan and emit findings as JSON for agents/CI
   llm-audit scan --sarif src      Scan and emit SARIF 2.1.0 for GitHub Code Scanning
+  llm-audit scan --open           Open the lessons for this scan in your browser
   llm-audit scan --html r.html    Write a shareable HTML report of the run
   llm-audit rules <rule-id>       Learn one rule: what, why, and the fixed code
   llm-audit scan --rule <id>      Scan for a single rule
@@ -1723,7 +1894,7 @@ USAGE
   llm-audit <command> [options]
 
 COMMANDS
-  demo                            Run the rule pack against bundled fixtures
+  demo [--open]                   Run the rule pack against bundled fixtures
   doctor                          Diagnose dependencies and project setup
   scan [paths...] [flags]         Run the rule pack against given paths (default: .)
   init [flags]                    Install pre-commit hook + CI workflow + optional skill
@@ -1731,6 +1902,10 @@ COMMANDS
   rules [rule-id]                 List every rule, or explain one in full
 
 SCAN FLAGS
+  --open                          Open the lessons for this scan from a local file
+  --link / --no-link              Always / never print the learn link
+                                  (default: printed at a terminal, not in CI)
+  --learn-url <url>               Where the learn link points, if you host the page
   --html <file>                   Write a standalone HTML report you can share
   --json                          Emit findings as JSON (versioned envelope)
   --sarif                         Emit findings as SARIF 2.1.0 (GitHub Code Scanning)
@@ -1782,7 +1957,7 @@ switch (sub) {
     await cmdUninstall(rest);
     break;
   case "demo":
-    cmdDemo();
+    cmdDemo(rest);
     break;
   case "doctor":
     await cmdDoctor();
