@@ -1771,7 +1771,7 @@ function cmdDemo(args = []) {
   console.log("  - run on your own repo:        `npx llm-audit scan`");
   console.log("  - wire up pre-commit + CI:     `npx llm-audit init`");
   console.log("  - read the rule rationale:     https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md");
-  console.log("  - read the project brief:      https://luislozoya.com/llm-audit");
+  console.log("  - the website and lessons:     https://llm-audit.luislozoya.com");
   // Always exit 0: finding things is the point of demo, not a failure.
   process.exit(0);
 }
@@ -2494,7 +2494,7 @@ NOT ON YOUR PATH?
   \`npm i -D llm-audit\` and call it from a package.json script.
 
 LEARN MORE
-  Project page    https://luislozoya.com/llm-audit
+  Website         https://llm-audit.luislozoya.com
   Repo            https://github.com/Javierlozo/llm-audit
   npm             https://www.npmjs.com/package/llm-audit
   Issues / bugs   https://github.com/Javierlozo/llm-audit/issues

@@ -115,9 +115,11 @@
     if (embedded) return { scan: validate(embedded), key: "local", raw: embedded };
     const params = new URLSearchParams(location.hash.slice(1));
     let r = params.get("r");
-    // No data in the address, but this tab was given a scan before and the
-    // address still points at a lesson: a reload, so use what was kept.
-    if (!r && params.has("l")) r = session.get();
+    // No data in the address, but this tab was given a scan and is being
+    // reloaded (or revisited with back/forward): use what was kept. A fresh
+    // visit to a lesson link gets the library, not an old scan.
+    const nav = performance.getEntriesByType?.("navigation")?.[0]?.type;
+    if (!r && params.has("l") && (nav === "reload" || nav === "back_forward")) r = session.get();
     if (!r) return { scan: null };
     if (r.length > 200000) throw new Error("it is longer than any scan link should be");
     let raw;
@@ -148,7 +150,7 @@
   async function shareUrl(key, raw, slug) {
     const base = location.protocol.startsWith("http")
       ? location.origin + location.pathname
-      : json("meta")?.base || "https://javierlozo.github.io/llm-audit/";
+      : json("meta")?.base || "https://llm-audit.luislozoya.com/learn/";
     const r = key === "local" ? await deflate(JSON.stringify(raw)) : key;
     return `${base}#r=${r}${slug ? `&l=${encodeURIComponent(slug)}` : ""}`;
   }

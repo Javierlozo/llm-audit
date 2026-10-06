@@ -35,7 +35,10 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 </p>
 
 <p>
-  <img src="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-fix.png" alt="Part of a lesson: how the mistake is used against you, as three numbered attack steps and the cost, followed by The fix, a ready-to-paste prompt listing every flagged file and line with the steps to fix them" width="560"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-fix-dark.png"/>
+    <img src="https://raw.githubusercontent.com/Javierlozo/llm-audit/main/docs/images/learn-fix.png" alt="Part of a lesson: how the mistake is used against you, as three numbered attack steps and the cost, followed by The fix, a ready-to-paste prompt listing every flagged file and line with the steps to fix them" width="560"/>
+  </picture>
   <br/>
   <sub>Each lesson walks through the attack, then gives a fix prompt that already lists every
   place to change. <code>npx llm-audit prompt 1</code> copies the same prompt from the terminal.</sub>
@@ -111,7 +114,7 @@ rates, output formats, licensing, the other OSS scanners, and the commercial
 tools.
 
 <sub>Built by <a href="https://www.luislozoya.com">Luis Javier Lozoya</a> ·
-<a href="https://www.luislozoya.com/llm-audit">Project page</a> ·
+<a href="https://llm-audit.luislozoya.com">Website</a> ·
 <a href="https://github.com/Javierlozo/llm-audit/issues">Issues</a> ·
 <a href="https://www.npmjs.com/package/llm-audit">npm</a></sub>
 
@@ -192,7 +195,7 @@ npx llm-audit rules            # all twelve rules, grouped by mistake
 
 A share link carries the scan in the part of the URL after `#`, which browsers
 never send to a server, so it opens on the static page at
-`https://javierlozo.github.io/llm-audit/` without anything being stored there.
+`https://llm-audit.luislozoya.com/learn/` without anything being stored there.
 The page is built by `node tools/build-site.mjs` and deployed by
 `.github/workflows/pages.yml`; to host it yourself, serve that file and point
 the CLI at it with `--learn-url <url>` or `LLM_AUDIT_LEARN_URL`.
@@ -543,8 +546,9 @@ src/rule-docs.mjs
                 `rules <id>` command and the report render
 templates/      Files installed by `llm-audit init` (husky hook, GH Action)
 test/           Vulnerable + safe fixtures per rule, plus the CLI suite
+web/            The website's home page (not shipped to npm)
 tools/          Dev only: regenerates the README hero and command map, and
-                builds the hosted learn page
+                builds the website: https://llm-audit.luislozoya.com
 docs/           RULES.md (rule reference, read at runtime), BRIEF.md (pitch),
                 AI-FAILURE-MODES.md, COMPETITIVE-LANDSCAPE.md, SECURITY-AUDIT.md
 ```

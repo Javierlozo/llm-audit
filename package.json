@@ -9,7 +9,7 @@
   "bugs": {
     "url": "https://github.com/Javierlozo/llm-audit/issues"
   },
-  "homepage": "https://www.luislozoya.com/llm-audit",
+  "homepage": "https://llm-audit.luislozoya.com",
   "type": "module",
   "bin": {
     "llm-audit": "src/cli.mjs"

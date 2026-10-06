@@ -16,6 +16,9 @@ independently of the package. It is at `1` and has not changed.
   a few kilobytes of data. Reloading still works. A "Copy share link" button
   rebuilds the full link when you want to send it.
 - README screenshots of the learn page, in light and dark.
+- The website moves to https://llm-audit.luislozoya.com: a product page at
+  `/` and the lessons at `/learn/`, built from this repo. Share links now
+  point there; old github.io links forward to the lessons.
 
 ## [0.9.0] — 2026-10-06
 

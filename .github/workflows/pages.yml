@@ -1,8 +1,11 @@
-# The hosted learn page. `scan` prints a link to it with the findings packed
-# into the URL fragment, which browsers never send to the server, so this is
-# a static file and nothing else: no backend, no storage, no analytics.
+# The website, https://llm-audit.luislozoya.com: the product page at / and
+# the lessons at /learn/. Share links carry a scan in the URL fragment, which
+# browsers never send to the server, so every page is a static file: no
+# backend, no storage, no analytics.
 #
-# One-time setup: repo Settings -> Pages -> Source: GitHub Actions.
+# One-time setup: repo Settings -> Pages -> Source: GitHub Actions, and the
+# custom domain llm-audit.luislozoya.com (a CNAME record pointing at
+# javierlozo.github.io). A CNAME file is not read by Actions deployments.
 # Self-hosting instead? Serve `node tools/build-site.mjs` output anywhere and
 # point the CLI at it with --learn-url or LLM_AUDIT_LEARN_URL.
 name: pages
@@ -10,7 +13,7 @@ name: pages
 on:
   push:
     branches: [main]
-    paths: ["src/**", "rules/**", "test/fixtures/**", "tools/build-site.mjs", ".github/workflows/pages.yml"]
+    paths: ["src/**", "rules/**", "test/fixtures/**", "web/**", "docs/images/**", "assets/**", "package.json", "tools/build-site.mjs", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
 permissions:

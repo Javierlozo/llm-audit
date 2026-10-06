@@ -42,7 +42,7 @@ function safeExamples() {
   return examples;
 }
 
-const FAVICON =
+export const FAVICON =
   "data:image/svg+xml," +
   encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 56"><rect width="56" height="56" rx="13" fill="#1b222c"/><rect x="27" y="11" width="3" height="34" rx="1.5" fill="#f0b429"/><rect x="34" y="15" width="13" height="26" rx="2" fill="#2f3947"/><path d="M11 28H23M19 23l5 5-5 5" fill="none" stroke="#e8edf4" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`

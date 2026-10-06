@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta http-equiv="Content-Security-Policy" content="@@CSP@@"/>
+<title>llm-audit: find the security holes AI writes into LLM apps</title>
+<meta name="description" content="Static analysis for TypeScript and JavaScript LLM apps. Twelve rules mapped to the OWASP LLM Top 10, lessons with your own code, and a prompt to fix each mistake. MIT, runs on your machine."/>
+<link rel="canonical" href="@@ORIGIN@@/"/>
+<meta property="og:title" content="llm-audit"/>
+<meta property="og:description" content="Find the security holes AI writes into your LLM app, learn why they matter, and fix them. Free, open source, runs on your machine."/>
+<meta property="og:url" content="@@ORIGIN@@/"/>
+<meta property="og:type" content="website"/>
+<meta property="og:image" content="@@ORIGIN@@/images/learn-light.png"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="icon" href="@@FAVICON@@"/>
+<style>@@CSS@@</style>
+</head>
+<body>
+<div class="page">
+
+<nav class="nav" aria-label="Site">
+  <a class="word" href="./">llm-audit</a>
+  <span class="nav-links">
+    <a href="#catches">Rules</a>
+    <a href="#how">How it works</a>
+    <a href="learn/">Lessons</a>
+    <a href="@@REPO@@">GitHub</a>
+    <a href="@@NPM@@">npm</a>
+  </span>
+</nav>
+
+<header class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">Open source · MIT · v@@VERSION@@</p>
+    <h1>Find the security holes AI writes into your LLM app.</h1>
+    <p class="standfirst">llm-audit checks TypeScript and JavaScript for the @@RULES@@ mistakes behind most LLM security bugs, mapped to the OWASP LLM Top 10. Then it teaches you each one with your own code, and hands you a prompt to fix it.</p>
+    <div class="install">
+      <code id="cmd">npx llm-audit scan</code>
+      <button class="btn" type="button" data-copy="npx llm-audit scan">Copy</button>
+    </div>
+    <p class="small muted">Needs the Semgrep engine once: <code>brew install semgrep</code> or <code>pipx install semgrep</code>.</p>
+    <p class="hero-links"><a href="learn/">Read the lessons</a><a href="@@REPO@@">Source on GitHub</a></p>
+  </div>
+
+  <figure class="boundary" aria-label="Untrusted inputs stopped at the authority boundary before they reach privileged code">
+    <span class="col-label l">Untrusted</span><span class="col-label r">Privileged</span>
+    <span class="src">request.json()</span><span class="line"></span><span class="dst">system prompt</span>
+    <span class="src">retrieved docs</span><span class="line"></span><span class="dst">eval · innerHTML</span>
+    <span class="src">model output</span><span class="line"></span><span class="dst">tool dispatch</span>
+    <span class="wall" aria-hidden="true"></span>
+    <figcaption>Every rule is one idea: untrusted text must not arrive with privileged authority.</figcaption>
+  </figure>
+</header>
+
+<section class="part" id="how">
+  <h2>Scan</h2>
+  <div class="part-body">
+    <p class="lede">At your terminal, mistakes are grouped worst first, with every place they occur.</p>
+    <img class="shot terminal" src="images/scan-demo.svg" alt="Terminal recording of npx llm-audit scan: three mistakes in a chat route handler, each with its file and line, ending with the commands to read the lessons and copy a fix prompt" width="820"/>
+  </div>
+</section>
+
+<section class="part">
+  <h2>Learn</h2>
+  <div class="part-body">
+    <p class="lede"><code>npx llm-audit learn</code> opens one lesson per mistake: where it is in your code, what is going on, and how someone would use it against you.</p>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="images/learn-dark.png"/>
+      <img class="shot" src="images/learn-light.png" alt="The lessons page for a sample support bot: 7 mistakes in 9 places, a numbered contents list, and lesson 1 showing the flagged lines" width="820" loading="lazy"/>
+    </picture>
+  </div>
+</section>
+
+<section class="part">
+  <h2>Fix</h2>
+  <div class="part-body split">
+    <div>
+      <p class="lede">Every lesson ends in a prompt for Claude Code, Cursor, or whatever wrote the code. It already lists each file and line to change.</p>
+      <div class="install">
+        <code>npx llm-audit prompt 1</code>
+        <button class="btn" type="button" data-copy="npx llm-audit prompt 1">Copy</button>
+      </div>
+      <p class="small muted">Copies lesson 1's fix prompt. Add <code>--check</code> for a prompt that searches the rest of the project for the same mistake.</p>
+    </div>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="images/learn-fix-dark.png"/>
+      <img class="shot" src="images/learn-fix.png" alt="A lesson's attack walkthrough and its fix prompt" width="420" loading="lazy"/>
+    </picture>
+  </div>
+</section>
+
+<section class="part" id="catches">
+  <h2>What it catches</h2>
+  <div class="part-body">
+    <p class="lede">@@RULES@@ rules in @@LESSONS@@ lessons. Each rule ships with a vulnerable example that must fire and a fixed one that must stay quiet, checked on every release.</p>
+    @@GROUPS@@
+  </div>
+</section>
+
+<section class="part">
+  <h2>Your code stays put</h2>
+  <div class="part-body">
+    <ul class="points">
+      <li><b>Runs on your machine.</b> The scan is Semgrep with llm-audit's rules, offline. No account, no upload, no telemetry.</li>
+      <li><b>The lessons page is a static file.</b> Its security policy blocks every network request. A share link carries the results after the <code>#</code>, which browsers never send to a server.</li>
+      <li><b>Secrets are redacted</b> in every output that shows code: terminal, JSON, HTML, and lessons.</li>
+      <li><b>No dependencies.</b> Nothing extra in your supply chain, and every release is published from CI with signed provenance.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="part">
+  <h2>Ready for real repos</h2>
+  <div class="part-body">
+    <dl class="features">
+      <div><dt>Pre-commit hook</dt><dd>Scans only staged files. <code>npx llm-audit init</code> installs it, with a GitHub Actions workflow.</dd></div>
+      <div><dt>Pull request annotations</dt><dd>In GitHub Actions, findings appear on the changed lines, with a summary on the job page.</dd></div>
+      <div><dt>Baseline</dt><dd><code>--baseline origin/main</code> reports only new findings, so you can turn the gate on today.</dd></div>
+      <div><dt>Ignores need a reason</dt><dd><code>// llm-audit-ignore &lt;rule&gt; -- &lt;why&gt;</code>. Without a reason it is not applied.</dd></div>
+      <div><dt>One config file</dt><dd><code>.llm-audit.json</code> holds the policy for the hook, CI, and your terminal.</dd></div>
+      <div><dt>Every format</dt><dd>Versioned JSON for agents, SARIF for code scanning, a standalone HTML report.</dd></div>
+    </dl>
+  </div>
+</section>
+
+<section class="part">
+  <h2>Why not Semgrep's AI pack?</h2>
+  <div class="part-body">
+    <p class="lede">Run both. Semgrep's official <code>p/ai-best-practices</code> is good work, but it doesn't scan TypeScript.</p>
+    <table class="compare">
+      <thead><tr><th></th><th>llm-audit</th><th>p/ai-best-practices</th></tr></thead>
+      <tbody>
+        <tr><th>JS / TS rules</th><td><b>@@RULES@@</b></td><td>0 of 27</td></tr>
+        <tr><th>Focus</th><td>TypeScript, TSX, JavaScript</td><td>Python, config, Bash</td></tr>
+        <tr><th>Teaches the fix</th><td>Lessons and fix prompts</td><td>Rule messages</td></tr>
+        <tr><th>Runs at</th><td>Pre-commit and CI</td><td>CI</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="part start">
+  <h2>Start</h2>
+  <div class="part-body">
+<pre class="steps"><code><span class="muted"># once</span>
+brew install semgrep
+
+<span class="muted"># see all twelve rules fire on bundled examples</span>
+npx llm-audit demo
+
+<span class="muted"># your project</span>
+npx llm-audit scan
+npx llm-audit learn
+
+<span class="muted"># make it permanent: pre-commit hook, CI, agent skill</span>
+npx llm-audit init --skill</code></pre>
+  </div>
+</section>
+
+<footer class="foot">
+  <p>llm-audit is MIT licensed and built by <a href="https://www.luislozoya.com">Luis Javier Lozoya</a>.</p>
+  <p><a href="@@REPO@@">GitHub</a><a href="@@NPM@@">npm</a><a href="@@REPO@@/blob/main/docs/RULES.md">Rule reference</a><a href="@@REPO@@/blob/main/CHANGELOG.md">Changelog</a><a href="https://www.luislozoya.com/blog/building-llm-audit">How it was built</a></p>
+</footer>
+
+</div>
+<script>@@JS@@</script>
+</body>
+</html>

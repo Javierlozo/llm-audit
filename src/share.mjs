@@ -22,7 +22,7 @@
 import { deflateRawSync, inflateRawSync } from "node:zlib";
 
 export const SHARE_VERSION = 1;
-export const DEFAULT_LEARN_URL = "https://javierlozo.github.io/llm-audit/";
+export const DEFAULT_LEARN_URL = "https://llm-audit.luislozoya.com/learn/";
 
 // Past these sizes the link gets dropped by chat apps or becomes unpleasant
 // to paste. Step down: full context, then matched lines only, then locations.

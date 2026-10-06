@@ -134,7 +134,7 @@ fields confidently.
 
 ## Documentation
 
-- Project page: <https://luislozoya.com/llm-audit>
+- Website: <https://llm-audit.luislozoya.com>
 - Rule rationale: <https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md>
 - Why AI assistants reproduce these patterns: <https://github.com/Javierlozo/llm-audit/blob/main/docs/AI-FAILURE-MODES.md>
 - Competitive landscape: <https://github.com/Javierlozo/llm-audit/blob/main/docs/COMPETITIVE-LANDSCAPE.md>
