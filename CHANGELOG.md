@@ -9,6 +9,11 @@ independently of the package. It is at `1` and has not changed.
 
 ## [Unreleased]
 
+### Changed
+
+- The README has a "Contribute a rule" section, and CONTRIBUTING.md lists the
+  fifth thing a rule needs: its place in a lesson, which `npm test` checks.
+
 ### Fixed
 
 - README images load from the website by absolute URL, so the banner, the

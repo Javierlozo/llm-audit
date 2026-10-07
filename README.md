@@ -71,6 +71,8 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
   <a href="#using-with-claude-code-cursor-or-codex-cli">Agents</a>
   ·
   <a href="docs/RULES.md">Rule Docs</a>
+  ·
+  <a href="#contribute-a-rule">Contribute</a>
 </p>
 
 ---
@@ -572,6 +574,20 @@ tools/          Dev only: regenerates the README hero and command map, and
 docs/           RULES.md (rule reference, read at runtime), BRIEF.md (pitch),
                 AI-FAILURE-MODES.md, COMPETITIVE-LANDSCAPE.md, SECURITY-AUDIT.md
 ```
+
+## Contribute a rule
+
+Each rule is one Semgrep YAML file plus a vulnerable and a safe fixture, so a
+new rule is a small, self-contained PR. Issues labeled
+[`good first issue`](https://github.com/Javierlozo/llm-audit/labels/good%20first%20issue)
+and [`help wanted`](https://github.com/Javierlozo/llm-audit/labels/help%20wanted)
+describe rules worth writing, with the code they should catch.
+[CONTRIBUTING.md](CONTRIBUTING.md) walks through the five files a rule needs,
+and `npm test` tells you when it's done.
+
+Seen an LLM bug in TypeScript that this misses? Open a
+[false negative](https://github.com/Javierlozo/llm-audit/issues/new?template=false-negative.md)
+with the smallest snippet that shows it.
 
 ## Author
 

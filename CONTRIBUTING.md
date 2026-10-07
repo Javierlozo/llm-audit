@@ -5,7 +5,7 @@ new rule, or a fix to one that misfires.
 
 ## The shape of a rule contribution
 
-Every rule ships as four things. A PR missing any of them will be asked for the
+Every rule ships as five things. A PR missing any of them will be asked for the
 rest before review.
 
 1. **`rules/<rule-id>.yaml`**, one rule per file, filename matching the rule
@@ -17,6 +17,10 @@ rest before review.
    the pack usable; a rule without a safe fixture is a rule nobody can trust.
 4. **A row in [`docs/RULES.md`](docs/RULES.md)** with the OWASP LLM Top 10
    mapping and the canonical fix.
+5. **The rule ID in one lesson** in [`src/lessons.mjs`](src/lessons.mjs): add
+   it to the `rules` array of the lesson that teaches the same mistake. Every
+   rule must belong to exactly one lesson, and `npm test` checks. If no lesson
+   fits, say so in the PR and we'll write one together.
 
 Then:
 
