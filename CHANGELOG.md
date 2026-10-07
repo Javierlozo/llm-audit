@@ -11,14 +11,26 @@ independently of the package. It is at `1` and has not changed.
 
 ### Changed
 
+- A new mark: a prompt chevron stopped at the amber boundary. The logo, the
+  README banner, and the favicon now share one drawing that reads at 16px.
+
+## [0.10.0] — 2026-10-06
+
+### Changed
+
+- The website moves to https://llm-audit.luislozoya.com: a product page at
+  `/` and the lessons at `/learn/`, built from this repo. Share links now
+  point there; old github.io links forward to the lessons.
+
+## [0.9.1] — 2026-10-06
+
+### Changed
+
 - The learn page moves a scan out of the address bar once it has read it,
   into the tab's sessionStorage, so the URL reads `…/#l=<lesson>` instead of
   a few kilobytes of data. Reloading still works. A "Copy share link" button
   rebuilds the full link when you want to send it.
 - README screenshots of the learn page, in light and dark.
-- The website moves to https://llm-audit.luislozoya.com: a product page at
-  `/` and the lessons at `/learn/`, built from this repo. Share links now
-  point there; old github.io links forward to the lessons.
 
 ## [0.9.0] — 2026-10-06
 

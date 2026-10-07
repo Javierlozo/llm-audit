@@ -7,6 +7,13 @@
   <a href="https://github.com/Javierlozo/llm-audit/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="MIT License"></a>
 </p>
 
+<p>
+  <a href="https://llm-audit.luislozoya.com"><b>Website</b></a> ·
+  <a href="https://llm-audit.luislozoya.com/learn/">Lessons</a> ·
+  <a href="https://github.com/Javierlozo/llm-audit/blob/main/docs/RULES.md">The 12 rules</a> ·
+  <a href="https://github.com/Javierlozo/llm-audit/blob/main/CHANGELOG.md">Changelog</a>
+</p>
+
 > Static analysis for **TypeScript and JavaScript** LLM-application code.
 > Twelve rules mapped to the OWASP LLM Top 10 (2026 edition), run at commit time.
 
