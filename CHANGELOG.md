@@ -7,12 +7,17 @@ All notable changes to `llm-audit`. Format follows
 The `scan --json` envelope carries its own `schemaVersion`, versioned
 independently of the package. It is at `1` and has not changed.
 
-## [Unreleased]
+## [0.10.1] — 2026-10-07
 
 ### Changed
 
 - A new mark: a prompt chevron stopped at the amber boundary. The logo, the
   README banner, and the favicon now share one drawing that reads at 16px.
+- `llm-audit --help` opens with the same six commands as the README's
+  "What you can run" card, `doctor` included, in the same words. The card is
+  now generated from that block, so the two cannot drift.
+- `llm-audit help` works as an alias for `--help`.
+- The website's Start section adds `prompt 1` and `doctor`.
 
 ## [0.10.0] — 2026-10-06
 

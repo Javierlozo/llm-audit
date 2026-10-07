@@ -2420,12 +2420,18 @@ OWASP LLM Top 10 at commit time.
   return `${title}
 
 START HERE
-  llm-audit demo                  See all twelve rules fire on bundled fixtures
-  llm-audit scan                  Scan this project; mistakes grouped worst first
-  llm-audit learn                 Open the lessons for your last scan
-  llm-audit prompt 1              Copy the fix prompt for lesson 1 to paste
-                                  into Claude Code, Cursor, or similar
-  llm-audit init --skill          Pre-commit hook, CI workflow, and agent skill
+  llm-audit demo                  Watch all twelve rules fire on bundled
+                                  vulnerable code
+  llm-audit scan                  Mistakes grouped worst first, every place
+                                  they occur
+  llm-audit learn                 Each mistake explained, with your code and
+                                  the attack
+  llm-audit prompt 1              Copy a fix prompt that lists every place to
+                                  change
+  llm-audit init --skill          Pre-commit hook, CI workflow, and the
+                                  coding-agent skill
+  llm-audit doctor                Dependencies, project setup, and whether
+                                  you are current
 
 USAGE
   llm-audit <command> [options]
@@ -2532,6 +2538,7 @@ switch (sub) {
     console.log(`llm-audit ${getVersion()}`);
     break;
   case undefined:
+  case "help":
   case "-h":
   case "--help":
     // Help requested explicitly: print to stdout per clig.dev. The wordmark

@@ -7,9 +7,9 @@
 // just installed the package should be able to answer "now what?" without
 // scrolling.
 //
-// The commands and their one-line summaries are read from the CLI's own
-// `--help`, so this cannot drift from the tool. The "moment" column is the
-// editorial part and lives here.
+// The commands and their one-line summaries are read from the START HERE block
+// of the CLI's own `--help`, so this cannot drift from the tool. The "moment"
+// column is the editorial part and lives here.
 //
 //   node tools/make-command-map.mjs [--out assets/commands.svg]
 
@@ -21,47 +21,17 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = resolve(__dirname, "..");
 
-// Ordered by when a developer reaches for it, which is the only ordering that
-// answers "now what?". The `command` is matched against `--help` output; if a
-// command stops existing, this script fails rather than shipping a lie.
-const MOMENTS = [
-  {
-    command: "demo",
-    display: "llm-audit demo",
-    when: "Before you adopt it",
-    what: "Watch all twelve rules fire on bundled vulnerable code.",
-  },
-  {
-    command: "scan",
-    display: "llm-audit scan src",
-    when: "While you write",
-    what: "Mistakes grouped worst first, every place they occur.",
-  },
-  {
-    command: "learn",
-    display: "llm-audit learn",
-    when: "When you want the why",
-    what: "Each mistake explained, with your code and the attack.",
-  },
-  {
-    command: "prompt",
-    display: "llm-audit prompt 1",
-    when: "When you are ready to fix",
-    what: "Copies a fix prompt that lists every place to change.",
-  },
-  {
-    command: "init",
-    display: "llm-audit init --skill",
-    when: "To make it permanent",
-    what: "Pre-commit hook, CI workflow, and the coding-agent skill.",
-  },
-  {
-    command: "doctor",
-    display: "llm-audit doctor",
-    when: "When something is off",
-    what: "Dependencies, project setup, and whether you are current.",
-  },
-];
+// The commands and what each one does come from the START HERE block of
+// `--help`, so the card and the terminal say the same thing. Only the moment
+// you would reach for each one is editorial, and it lives here.
+const WHEN = {
+  demo: "Before you adopt it",
+  scan: "While you write",
+  learn: "When you want the why",
+  prompt: "When you are ready to fix",
+  init: "To make it permanent",
+  doctor: "When something is off",
+};
 
 function helpText() {
   const r = spawnSync(process.execPath, [join(PKG_ROOT, "src", "cli.mjs"), "--help"], {
@@ -72,19 +42,33 @@ function helpText() {
   return r.stdout;
 }
 
-// Fail loudly rather than advertise a command the CLI no longer has.
-function verify(help) {
-  const commandsSection = help.split(/^COMMANDS$/m)[1] || "";
-  for (const { command } of MOMENTS) {
-    const listed = new RegExp(`^\\s{2}${command}\\b`, "m").test(commandsSection);
-    if (!listed) {
-      throw new Error(
-        `'${command}' is in the command map but not in \`llm-audit --help\`. ` +
-          `Update tools/make-command-map.mjs.`
-      );
+// Each entry is "  llm-audit <command...>   <summary>", with the summary
+// wrapping onto lines indented to the same column.
+function startHere(help) {
+  const block = (help.split(/^START HERE$/m)[1] || "").split(/^\S/m)[0];
+  const moments = [];
+  for (const line of block.split("\n")) {
+    const entry = /^ {2}(llm-audit \S+(?: \S+)*?) {2,}(\S.*)$/.exec(line);
+    if (entry) {
+      const command = entry[1].split(" ")[1];
+      if (!WHEN[command]) {
+        throw new Error(
+          `'${command}' is in START HERE but has no moment. Add it to WHEN in tools/make-command-map.mjs.`
+        );
+      }
+      moments.push({ command, display: entry[1], when: WHEN[command], what: entry[2] });
+    } else if (line.trim() && moments.length) {
+      moments[moments.length - 1].what += " " + line.trim();
     }
   }
+  if (moments.length === 0) throw new Error("no START HERE block in `llm-audit --help`");
+  for (const m of moments) m.what += ".";
+  return moments;
 }
+
+const MOMENTS = startHere(helpText());
+
+const NUMBER = { 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight" };
 
 const esc = (s) =>
   String(s)
@@ -117,7 +101,7 @@ function render() {
   out.push(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${height}" ` +
       `viewBox="0 0 ${WIDTH} ${height}" role="img" ` +
-      `aria-label="What you can run: six llm-audit commands, ordered by when you would reach for each one" ` +
+      `aria-label="What you can run: ${NUMBER[MOMENTS.length] || MOMENTS.length} llm-audit commands, ordered by when you would reach for each one" ` +
       `font-family="${SANS}">`
   );
   out.push(`<title>llm-audit — what you can run</title>`);
@@ -133,7 +117,7 @@ function render() {
   );
   out.push(
     `<text x="${PAD + 152}" y="${PAD + 10}" fill="${FAINT}" font-size="12.5">` +
-      `\u2014 six commands, in the order you would reach for them</text>`
+      `\u2014 ${NUMBER[MOMENTS.length] || MOMENTS.length} commands, in the order you would reach for them</text>`
   );
 
   // One continuous rule down the left, echoing the boundary line in the
@@ -174,6 +158,5 @@ const outPath =
     ? resolve(process.argv[outIndex + 1])
     : join(PKG_ROOT, "assets", "commands.svg");
 
-verify(helpText());
 writeFileSync(outPath, render());
 console.log(`wrote ${outPath} — ${MOMENTS.length} commands`);

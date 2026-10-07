@@ -108,6 +108,12 @@ check("--help exits 0 and documents every subcommand", () => {
   }
 });
 
+check("`help` prints the same text as --help", () => {
+  const r = run(["help"]);
+  assertEqual(r.status, 0, "exit code");
+  assertEqual(r.stdout, run(["--help"]).stdout, "help output");
+});
+
 check("common wrong words map to the right command", () => {
   for (const [typed, expected] of [["delete", "uninstall"], ["remove", "uninstall"], ["setup", "init"]]) {
     const r = run([typed]);
