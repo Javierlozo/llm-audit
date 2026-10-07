@@ -7,7 +7,17 @@ All notable changes to `llm-audit`. Format follows
 The `scan --json` envelope carries its own `schemaVersion`, versioned
 independently of the package. It is at `1` and has not changed.
 
-## [Unreleased]
+## [0.11.0] — 2026-10-07
+
+### Added
+
+- A GitHub Action, `Javierlozo/llm-audit`, listed on the Marketplace as
+  "llm-audit scan". It runs the CLI from the pinned ref, installs Semgrep when
+  the runner lacks it, and takes `paths`, `fail-on`, `baseline`, `sarif`, and
+  `args`. Findings become pull request annotations as before. CI runs the action
+  against the fixtures on every push.
+- npm keywords people search for: TypeScript, Next.js, the Vercel AI SDK,
+  OpenAI, Anthropic, LangChain, OWASP LLM Top 10, pre-commit, GitHub Action.
 
 ### Changed
 

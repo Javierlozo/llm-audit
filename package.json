@@ -35,13 +35,25 @@
   },
   "keywords": [
     "llm",
+    "llm-security",
+    "ai-security",
     "security",
     "static-analysis",
+    "sast",
     "semgrep",
     "owasp",
+    "owasp-llm-top-10",
     "prompt-injection",
-    "ai-security",
-    "sast"
+    "typescript",
+    "javascript",
+    "nextjs",
+    "vercel-ai-sdk",
+    "openai",
+    "anthropic",
+    "langchain",
+    "pre-commit",
+    "github-action",
+    "sarif"
   ],
   "author": {
     "name": "Luis Javier Lozoya",

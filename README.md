@@ -259,6 +259,19 @@ which GitHub shows on the pull request's changed lines, and adds a summary to
 the job page. No token or code-scanning setup is needed. `--no-github` turns it
 off. `llm-audit init` installs a workflow that runs the scan.
 
+Or use the action directly. It runs the CLI from the ref you pin, so CI never
+fetches a different version from npm, and installs Semgrep if the runner lacks it:
+
+```yaml
+- uses: actions/checkout@v7
+- uses: Javierlozo/llm-audit@v0.11.0
+  with:
+    fail-on: error            # any (default) | error | warning | info | never
+    # paths: src app          # default: .
+    # baseline: origin/main   # only new findings; needs fetch-depth: 0
+    # sarif: llm-audit.sarif  # also write SARIF for code scanning
+```
+
 ### Exit codes
 
 | Code | Meaning |

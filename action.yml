@@ -1,0 +1,78 @@
+# The llm-audit GitHub Action.
+#
+# Runs the CLI from this checkout of the action (the ref you pin), so a job
+# never pulls a different version from npm than the one you reviewed. The CLI
+# has no dependencies, so there is nothing to install but Semgrep.
+#
+#   - uses: actions/checkout@<sha>
+#   - uses: Javierlozo/llm-audit@<sha or tag>
+#     with:
+#       fail-on: error
+#
+# Findings become annotations on the pull request's changed lines and a
+# summary on the job page, the same as `llm-audit scan` inside any Actions job.
+
+name: llm-audit scan
+description: Find OWASP LLM Top 10 security bugs in TypeScript and JavaScript LLM apps, as pull request annotations.
+author: Luis Javier Lozoya
+
+branding:
+  icon: shield
+  color: yellow
+
+inputs:
+  paths:
+    description: Space-separated paths to scan.
+    default: "."
+  fail-on:
+    description: Fail the job only at or above this severity. any | error | warning | info | never
+    default: any
+  baseline:
+    description: Report only findings new since this git ref, for example origin/main. Needs fetch-depth 0 on checkout.
+    default: ""
+  sarif:
+    description: Also write SARIF 2.1.0 to this file, for github/codeql-action/upload-sarif.
+    default: ""
+  args:
+    description: Extra flags for `llm-audit scan`, for example "--rule hardcoded-llm-api-key".
+    default: ""
+  semgrep-version:
+    description: Semgrep version to install if it is not already on the runner. Empty means latest.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: install semgrep
+      shell: bash
+      env:
+        SEMGREP_VERSION: ${{ inputs.semgrep-version }}
+      run: |
+        if command -v semgrep >/dev/null 2>&1; then
+          echo "semgrep $(semgrep --version) already installed"
+        elif [ -n "$SEMGREP_VERSION" ]; then
+          pipx install "semgrep==$SEMGREP_VERSION"
+        else
+          pipx install semgrep
+        fi
+
+    # Inputs reach the script through env, never interpolated into it, so a
+    # path or flag cannot inject shell.
+    - name: llm-audit scan
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        BASELINE: ${{ inputs.baseline }}
+        SARIF: ${{ inputs.sarif }}
+        ARGS: ${{ inputs.args }}
+      run: |
+        read -ra paths <<< "$PATHS"
+        read -ra extra <<< "$ARGS"
+        flags=(--fail-on "$FAIL_ON")
+        if [ -n "$BASELINE" ]; then flags+=(--baseline "$BASELINE"); fi
+        cli="$GITHUB_ACTION_PATH/src/cli.mjs"
+        if [ -n "$SARIF" ]; then
+          node "$cli" scan --sarif --no-github "${extra[@]}" "${paths[@]}" > "$SARIF" || true
+        fi
+        node "$cli" scan "${flags[@]}" "${extra[@]}" "${paths[@]}"

@@ -36,3 +36,43 @@ jobs:
 
       - name: run fixture suite
         run: npm test
+
+  # The published action (action.yml at the root), run the way a user's
+  # workflow runs it. The vulnerable fixtures must produce findings and SARIF;
+  # fail-on never keeps the step green so the assertions below decide.
+  action:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: run the action on the fixtures
+        uses: ./
+        with:
+          # Semgrep skips test/ directories, so name the files.
+          paths: >-
+            test/fixtures/hardcoded-llm-api-key/vulnerable.ts
+            test/fixtures/llm-output-insecure-handling/vulnerable.tsx
+            test/fixtures/untrusted-input-in-system-prompt/vulnerable.ts
+          fail-on: never
+          sarif: action.sarif
+          args: --no-github
+
+      - name: the action wrote SARIF with findings
+        run: |
+          node -e '
+            const s = JSON.parse(require("fs").readFileSync("action.sarif", "utf8"));
+            const n = s.runs[0].results.length;
+            console.log(`${n} results`);
+            if (n === 0) process.exit(1);
+          '
+
+      - name: fail-on any fails the job on the same fixtures
+        id: strict
+        continue-on-error: true
+        uses: ./
+        with:
+          paths: test/fixtures/hardcoded-llm-api-key/vulnerable.ts
+          args: --no-github
+
+      - name: the strict run failed
+        run: test "${{ steps.strict.outcome }}" = "failure"
