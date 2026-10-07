@@ -130,7 +130,11 @@ for (const f of ["literata.woff2", "archivo.woff2"]) {
 for (const f of ["learn-light.png", "learn-dark.png", "learn-fix.png", "learn-fix-dark.png", "social-preview.png"]) {
   copyFileSync(join(root, "docs", "images", f), join(out, "images", f));
 }
-copyFileSync(join(root, "assets", "scan-demo.svg"), join(out, "images", "scan-demo.svg"));
+// The README links these by absolute URL, so they also render where relative
+// paths do not resolve, like the GitHub Marketplace listing.
+for (const f of ["scan-demo.svg", "banner.svg", "commands.svg"]) {
+  copyFileSync(join(root, "assets", f), join(out, "images", f));
+}
 writeFileSync(join(out, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${ORIGIN}/sitemap.xml\n`);
 writeFileSync(
   join(out, "sitemap.xml"),

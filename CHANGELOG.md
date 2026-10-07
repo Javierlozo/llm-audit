@@ -7,6 +7,14 @@ All notable changes to `llm-audit`. Format follows
 The `scan --json` envelope carries its own `schemaVersion`, versioned
 independently of the package. It is at `1` and has not changed.
 
+## [Unreleased]
+
+### Fixed
+
+- README images load from the website by absolute URL, so the banner, the
+  terminal recording, and the command card also show on the GitHub
+  Marketplace listing, where relative paths do not resolve.
+
 ## [0.11.0] — 2026-10-07
 
 ### Added

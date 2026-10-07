@@ -1,4 +1,4 @@
-<img src="assets/banner.svg" alt="llm-audit — untrusted input stopped at the authority boundary, before commit" width="100%"/>
+<img src="https://llm-audit.luislozoya.com/images/banner.svg" alt="llm-audit — untrusted input stopped at the authority boundary, before commit" width="100%"/>
 
 <p>
   <a href="https://www.npmjs.com/package/llm-audit"><img src="https://img.shields.io/npm/v/llm-audit?style=flat-square&color=CB3837&logo=npm&logoColor=white" alt="npm version"></a>
@@ -24,7 +24,7 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 ```
 
 <p>
-  <img src="assets/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler has three mistakes, a hardcoded key, model JSON trusted without checking, and an unchecked request body, each listed with its file and line, ending with the commands to read the lessons and copy a fix prompt" width="820"/>
+  <img src="https://llm-audit.luislozoya.com/images/scan-demo.svg" alt="Terminal recording of npx llm-audit scan src: a chat route handler has three mistakes, a hardcoded key, model JSON trusted without checking, and an unchecked request body, each listed with its file and line, ending with the commands to read the lessons and copy a fix prompt" width="820"/>
   <br/>
   <sub>A real run against a real chat route handler. Generated from live CLI output by
   <code>npm run demo:svg</code>, not drawn by hand. Mistakes are grouped worst first, with
@@ -52,7 +52,7 @@ npx llm-audit demo       # watch the twelve rules fire on bundled fixtures
 </p>
 
 <p>
-  <img src="assets/commands.svg" alt="What you can run: llm-audit demo before you adopt it, scan while you write, learn when you want the why, prompt 1 when you are ready to fix, init to make it permanent, doctor when something is off" width="820"/>
+  <img src="https://llm-audit.luislozoya.com/images/commands.svg" alt="What you can run: llm-audit demo before you adopt it, scan while you write, learn when you want the why, prompt 1 when you are ready to fix, init to make it permanent, doctor when something is off" width="820"/>
 </p>
 
 <p>
