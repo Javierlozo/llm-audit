@@ -339,7 +339,7 @@ JSON envelope shape:
 ```jsonc
 {
   "schemaVersion": 1,
-  "tool": { "name": "llm-audit", "version": "0.5.0" },
+  "tool": { "name": "llm-audit", "version": "0.10.2" },
   "repo": { "commit": "…", "shortCommit": "01d9ff30", "branch": "main", "dirty": false },
   "scannedPaths": ["src"],
   "summary": { "findings": 0 },
@@ -479,7 +479,7 @@ npm i -D llm-audit
 …or pin a version directly in the workflow file:
 
 ```yaml
-- run: npx llm-audit@0.5.0 scan
+- run: npx llm-audit@0.10.2 scan
 ```
 
 ## Why

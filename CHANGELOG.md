@@ -7,6 +7,22 @@ All notable changes to `llm-audit`. Format follows
 The `scan --json` envelope carries its own `schemaVersion`, versioned
 independently of the package. It is at `1` and has not changed.
 
+## [0.10.2] — 2026-10-07
+
+### Added
+
+- A page for every lesson on the website, at
+  https://llm-audit.luislozoya.com/lessons/, with an index. Each one carries
+  the attack, how to spot it, and copyable fix and check prompts, as plain
+  HTML that search engines can read. The home page links to them, and the
+  sitemap lists them.
+- Each tag now creates its GitHub release too, with that version's changelog
+  section as the notes, so npm and GitHub Releases cannot drift apart.
+
+### Changed
+
+- README examples that showed version 0.5.0 now show the current version.
+
 ## [0.10.1] — 2026-10-07
 
 ### Changed

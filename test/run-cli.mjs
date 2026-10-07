@@ -227,6 +227,36 @@ check("the README command map is generated from the current --help", () => {
   });
 });
 
+// --- the website ------------------------------------------------------------
+//
+// Every lesson gets a static page the sitemap lists, and every tag needs a
+// changelog section for its GitHub release notes.
+
+check("the site builds a page per lesson and lists each in the sitemap", () => {
+  withTempDir((dir) => {
+    const r = spawnSync(process.execPath, [join(PKG_ROOT, "tools", "build-site.mjs"), dir], {
+      encoding: "utf8",
+    });
+    assertEqual(r.status, 0, `build-site exit code (${r.stderr.trim()})`);
+    const sitemap = readFileSync(join(dir, "sitemap.xml"), "utf8");
+    for (const l of LESSONS) {
+      const page = readFileSync(join(dir, "lessons", l.slug, "index.html"), "utf8");
+      assert(page.includes(`<h1>${l.title.replace(/&/g, "&amp;")}</h1>`), `lesson page for ${l.slug} is missing its title`);
+      assert(!/@@[A-Z]+@@/.test(page), `lesson page for ${l.slug} has an unfilled placeholder`);
+      assert(sitemap.includes(`/lessons/${l.slug}/`), `sitemap is missing ${l.slug}`);
+    }
+  });
+});
+
+check("the changelog has release notes for the package version", () => {
+  const pkg = JSON.parse(readFileSync(join(PKG_ROOT, "package.json"), "utf8"));
+  const r = spawnSync(process.execPath, [join(PKG_ROOT, "tools", "release-notes.mjs"), pkg.version], {
+    encoding: "utf8",
+  });
+  assertEqual(r.status, 0, `release-notes exit code (${r.stderr.trim()})`);
+  assert(r.stdout.includes("### "), "release notes have no subsections");
+});
+
 // --- docs/RULES.md is load-bearing -----------------------------------------
 //
 // `rules <id>` and the HTML report both parse docs/RULES.md for their teaching

@@ -3,6 +3,7 @@
 //
 //   /           the product page, from web/index.html and web/site.css
 //   /learn/     the lessons page, the same file `llm-audit learn` opens
+//   /lessons/   one static, crawlable page per lesson, plus an index
 //   /fonts/     the subset fonts both pages use
 //   /images/    README screenshots and the terminal recording
 //
@@ -19,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import { renderLearnPage, FAVICON } from "../src/learn.mjs";
 import { LESSONS } from "../src/lessons.mjs";
 import { readRuleMeta } from "../src/rule-docs.mjs";
+import { renderLessonPage, renderLessonsIndex, severityOf } from "./site-lessons.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const out = resolve(process.argv[2] || join(root, "site"));
@@ -46,17 +48,15 @@ for (const l of LESSONS) {
 
 const esc = (s) =>
   String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-const rank = { ERROR: 0, WARNING: 1, INFO: 2 };
-const severityOf = (lesson) =>
-  lesson.rules.map((r) => meta[r]?.severity || "INFO").sort((a, b) => rank[a] - rank[b])[0];
-
-const groupsHtml = `<div class="groups">${GROUPS.map(
+// `prefix` leads from the page to /lessons/: "lessons/" from the home page,
+// "" from the lessons index.
+const groupsHtml = (prefix) => `<div class="groups">${GROUPS.map(
   ([title, slugs]) => `
     <div class="group"><h3>${esc(title)}</h3><ul>${slugs
       .map((slug) => {
         const l = LESSONS.find((x) => x.slug === slug);
-        const sev = severityOf(l).toLowerCase();
-        return `<li><a href="learn/#l=${esc(slug)}"><b>${esc(l.title)}<span class="sev ${sev}">${sev}</span></b><span>${esc(l.summary)}</span></a></li>`;
+        const sev = severityOf(l, meta).toLowerCase();
+        return `<li><a href="${prefix}${esc(slug)}/"><b>${esc(l.title)}<span class="sev ${sev}">${sev}</span></b><span>${esc(l.summary)}</span></a></li>`;
       })
       .join("")}</ul></div>`
 ).join("")}
@@ -95,7 +95,7 @@ const home = readFileSync(join(root, "web", "index.html"), "utf8")
   .replace("@@CSP@@", csp)
   .replace("@@CSS@@", css)
   .replace("@@JS@@", js)
-  .replace("@@GROUPS@@", groupsHtml)
+  .replace("@@GROUPS@@", groupsHtml("lessons/"))
   .replace("@@FAVICON@@", FAVICON)
   .replaceAll("@@ORIGIN@@", ORIGIN)
   .replaceAll("@@REPO@@", REPO)
@@ -109,6 +109,21 @@ rmSync(out, { recursive: true, force: true });
 for (const d of ["learn", "fonts", "images"]) mkdirSync(join(out, d), { recursive: true });
 writeFileSync(join(out, "index.html"), home);
 writeFileSync(join(out, "learn", "index.html"), renderLearnPage({ version, base: `${ORIGIN}/learn/` }));
+
+// Lesson pages sit deeper, so their stylesheet reaches the fonts with ../
+// and needs its own hash in the CSP.
+const fill = (html, up) => {
+  const pageCss = css.replaceAll("url(fonts/", `url(${up}fonts/`);
+  const pageCsp = csp.replace(sha(css), sha(pageCss));
+  return html.replace("@@CSP@@", pageCsp).replace("@@CSS@@", pageCss).replace("@@JS@@", js);
+};
+const ctx = { origin: ORIGIN, repo: REPO, npm: NPM, favicon: FAVICON, meta };
+mkdirSync(join(out, "lessons"), { recursive: true });
+writeFileSync(join(out, "lessons", "index.html"), fill(renderLessonsIndex(groupsHtml(""), ctx), "../"));
+for (const l of LESSONS) {
+  mkdirSync(join(out, "lessons", l.slug), { recursive: true });
+  writeFileSync(join(out, "lessons", l.slug, "index.html"), fill(renderLessonPage(l, ctx), "../../"));
+}
 for (const f of ["literata.woff2", "archivo.woff2"]) {
   copyFileSync(join(root, "src", "learn", "fonts", f), join(out, "fonts", f));
 }
@@ -120,6 +135,9 @@ writeFileSync(join(out, "robots.txt"), `User-agent: *\nAllow: /\nSitemap: ${ORIG
 writeFileSync(
   join(out, "sitemap.xml"),
   `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n` +
-    `  <url><loc>${ORIGIN}/</loc></url>\n  <url><loc>${ORIGIN}/learn/</loc></url>\n</urlset>\n`
+    [`${ORIGIN}/`, `${ORIGIN}/lessons/`, ...LESSONS.map((l) => `${ORIGIN}/lessons/${l.slug}/`), `${ORIGIN}/learn/`]
+      .map((u) => `  <url><loc>${u}</loc></url>\n`)
+      .join("") +
+    `</urlset>\n`
 );
 console.log(`wrote ${out} for ${ORIGIN}`);

@@ -120,6 +120,26 @@ dd{margin:0;color:var(--ink-2);font-size:16px}
   font:15px/1.7 var(--mono);max-width:620px}
 .steps code{background:none;border:0;padding:0;font-size:inherit}
 
+/* lesson pages */
+.lesson-head{padding:var(--s8) 0 var(--s7);border-bottom:1px solid var(--rule)}
+.lesson-head h1{max-width:20ch}
+.lesson-head h1{font-size:clamp(34px,4.8vw,58px);line-height:1.04}
+.eyebrow a{text-decoration:none} .eyebrow a:hover{text-decoration:underline}
+.eyebrow .sev{margin-left:0}
+.prose{max-width:66ch}
+.prose p,.attack li{font-size:18px}
+.code,.prompt pre{margin:0 0 var(--s5);background:var(--paper-2);border:1px solid var(--rule);padding:var(--s4) var(--s5);
+  overflow-x:auto;font:14.5px/1.6 var(--mono)}
+.code code,.prompt code{background:none;border:0;padding:0;font-size:inherit;white-space:pre}
+.prompt{position:relative}
+.prompt pre{padding-right:96px}
+.prompt code{white-space:pre-wrap}
+.prompt .btn{position:absolute;top:var(--s3);right:var(--s3);background:var(--paper)}
+.prompt .btn:hover{background:var(--ink)}
+.attack{margin:0 0 var(--s5);padding-left:1.4em}
+.attack li{padding:var(--s2) 0}
+.attack li::marker{font-family:var(--label);font-weight:680;color:var(--amber-ink)}
+
 .foot{padding:var(--s7) 0 var(--s9);color:var(--muted);font-size:15px}
 .foot p:last-child{display:flex;gap:var(--s5);flex-wrap:wrap}
 
