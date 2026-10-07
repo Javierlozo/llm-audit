@@ -127,7 +127,7 @@ for (const l of LESSONS) {
 for (const f of ["literata.woff2", "archivo.woff2"]) {
   copyFileSync(join(root, "src", "learn", "fonts", f), join(out, "fonts", f));
 }
-for (const f of ["learn-light.png", "learn-dark.png", "learn-fix.png", "learn-fix-dark.png"]) {
+for (const f of ["learn-light.png", "learn-dark.png", "learn-fix.png", "learn-fix-dark.png", "social-preview.png"]) {
   copyFileSync(join(root, "docs", "images", f), join(out, "images", f));
 }
 copyFileSync(join(root, "assets", "scan-demo.svg"), join(out, "images", "scan-demo.svg"));

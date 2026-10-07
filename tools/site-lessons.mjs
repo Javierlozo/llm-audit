@@ -37,7 +37,7 @@ function shell({ up, title, description, canonical, body, head }) {
 <meta property="og:description" content="${esc(description)}"/>
 <meta property="og:url" content="${esc(canonical)}"/>
 <meta property="og:type" content="article"/>
-<meta property="og:image" content="${head.origin}/images/learn-light.png"/>
+<meta property="og:image" content="${head.origin}/images/social-preview.png"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <link rel="icon" href="${head.favicon}"/>
 <style>@@CSS@@</style>

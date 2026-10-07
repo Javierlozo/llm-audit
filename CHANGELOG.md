@@ -7,6 +7,13 @@ All notable changes to `llm-audit`. Format follows
 The `scan --json` envelope carries its own `schemaVersion`, versioned
 independently of the package. It is at `1` and has not changed.
 
+## [Unreleased]
+
+### Changed
+
+- A social preview card for the repo and the website's link previews,
+  in place of a screenshot of the learn page.
+
 ## [0.10.2] — 2026-10-07
 
 ### Added
